@@ -1,0 +1,6 @@
+{
+  "name": "PCTS & HMIS Monitoring System",
+  "description": "HMIS Monitoring and Reporting Platform with print-friendly layout, detailed location headers, and PDF export",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

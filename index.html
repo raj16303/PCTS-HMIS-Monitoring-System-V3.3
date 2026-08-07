@@ -1,0 +1,1867 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PCTS &amp; HMIS Monitoring System — BCMHO, Banera (Bhilwara)</title>
+<meta name="description" content="Enterprise HMIS Monitoring & Reporting Platform – Medical & Health Department"/>
+<!-- Tailwind: primary (jsdelivr) + fallback (unpkg play CDN) for offline/blocked networks -->
+<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.0.9/dist/index.global.js"></script>
+<script>
+  // Fallback: if Tailwind v4 browser didn't attach, load Play CDN v3
+  window.addEventListener('DOMContentLoaded', function(){
+    var probe = document.createElement('div');
+    probe.className='hidden';
+    document.body.appendChild(probe);
+    var ok = getComputedStyle(probe).display === 'none';
+    document.body.removeChild(probe);
+    if(!ok){
+      var s=document.createElement('script');
+      s.src='https://unpkg.com/@tailwindcss/browser@4';
+      document.head.appendChild(s);
+      setTimeout(function(){
+        var p2=document.createElement('div');p2.className='hidden';document.body.appendChild(p2);
+        var ok2=getComputedStyle(p2).display==='none';document.body.removeChild(p2);
+        if(!ok2){
+          var s2=document.createElement('script');
+          s2.src='https://cdn.tailwindcss.com';
+          document.head.appendChild(s2);
+        }
+      },800);
+    }
+  });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/scripts/choices.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js@10.2.0/public/assets/styles/choices.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.1/dist/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<style>
+  :root{
+    --bg:#f1f5f9;--panel:#ffffff;--panel2:#f8fafc;--text:#1e293b;--muted:#64748b;
+    --border:#e2e8f0;--accent:#2563eb;--accent2:#1d4ed8;--good:#16a34a;--warn:#ca8a04;--bad:#dc2626;
+    --shadow:0 1px 3px 0 rgba(0,0,0,0.08), 0 1px 2px -1px rgba(0,0,0,0.08);
+  }
+  html,body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:8px;box-shadow:var(--shadow)}
+  .kpi{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;box-shadow:var(--shadow);transition:transform .15s, box-shadow .15s}
+  .kpi:hover{transform:translateY(-1px);box-shadow:0 4px 12px rgba(15,23,42,0.08)}
+  .btn{border:1px solid #cbd5e1;background:#ffffff;border-radius:6px;padding:9px 16px;font-weight:600;font-size:13px;transition:all .15s;color:#334155;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
+  .btn:hover{background:#f8fafc;border-color:#94a3b8;color:#0f172a}
+  .btn-primary{background:#2563eb;color:#ffffff;border:none;font-weight:600}
+  .btn-primary:hover{background:#1d4ed8;color:#ffffff}
+  .btn-outline{background:#ffffff;border:1px solid #cbd5e1;color:#334155;font-weight:600}
+  .btn-outline:hover{background:#f8fafc;border-color:#94a3b8}
+  .tab{padding:8px 14px;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer;color:var(--muted)}
+  .tab.active{background:#2563eb;color:#ffffff}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:14px;font-weight:600}
+  .nav-item:hover{background:#f1f5f9;color:var(--text)}
+  .nav-item.active{background:#2563eb;color:#ffffff;box-shadow:0 2px 8px rgba(37,99,235,0.3)}
+  .rtable-wrap{overflow:auto;max-height:70vh;border:1px solid #cbd5e1;border-radius:6px;background:var(--panel);position:relative}
+  table.rtable{border-collapse:separate;border-spacing:0;font-size:12.5px;width:max-content;min-width:100%}
+  table.rtable th,table.rtable td{padding:9px 12px;border-bottom:1px solid #e2e8f0;border-right:1px solid #e2e8f0;white-space:nowrap;background:var(--panel)}
+  table.rtable thead th{position:sticky;top:0;background:#f1f5f9;z-index:3;font-weight:700;color:#475569;text-transform:uppercase;font-size:11px;letter-spacing:0.03em;border-bottom:1px solid #cbd5e1;text-align:left;user-select:none}
+  table.rtable tbody tr:nth-child(even) td{background:#fcfdfe}
+  table.rtable tbody tr:hover td{background:#f1f5f9}
+  table.rtable td.sticky-col,table.rtable th.sticky-col{position:sticky;left:0;z-index:2;background:#ffffff;font-weight:600;min-width:260px;max-width:520px;width:420px;white-space:normal;word-break:break-word;overflow-wrap:break-word;line-height:1.4;vertical-align:top}
+  table.rtable td.sticky-col{padding-top:10px;padding-bottom:10px}
+  table.rtable thead th.sticky-col{z-index:5;background:#f1f5f9;white-space:normal;vertical-align:middle}
+  .expand-ind{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;background:rgba(37,99,235,.1);color:#2563eb;font-size:11px;font-weight:700;margin-left:6px;cursor:pointer;flex-shrink:0;vertical-align:middle}
+  .expand-ind:hover{background:#2563eb;color:#ffffff}
+  table.rtable tfoot td{position:sticky;bottom:0;background:#f1f5f9;color:#1e293b;font-weight:700;z-index:2;border-top:2px solid #1e293b}
+  table.rtable tfoot td.sticky-col{z-index:4;background:#f1f5f9}
+  table.rtable td.num,table.rtable th.num{text-align:right;font-variant-numeric:tabular-nums}
+  .grand{background:#f8fafc !important;font-weight:700;color:#1e293b}
+  .resizer{position:absolute;right:0;top:0;width:5px;height:100%;cursor:col-resize;user-select:none}
+  th{position:relative}
+  .choices__inner{min-height:38px;background:#fff;border-radius:6px;border:1px solid #cbd5e1;font-size:13px;display:flex;flex-wrap:wrap;align-items:center;padding:3px 6px !important;gap:4px}
+  .choices[data-type*="select-one"] .choices__input{background:#fff}
+  .choices__list--dropdown .choices__item,.choices__list[aria-expanded] .choices__item{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;line-height:1.4;font-size:12px;padding:8px 10px !important}
+  .choices__list--multiple .choices__item{white-space:nowrap!important;word-break:normal!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:280px!important;display:inline-flex!important;align-items:center!important;gap:4px!important;padding:3px 8px!important;border-radius:4px!important;background-color:#dbeafe!important;color:#1e40af!important;border:1px solid #bfdbfe!important;font-size:12px!important;font-weight:600!important;margin:2px 3px 2px 0!important;line-height:1.3!important}
+  .choices__list--multiple .choices__item button{margin-left:4px!important;border-left:1px solid #93c5fd!important;padding-left:4px!important;opacity:0.75}
+  .choices__list--multiple .choices__item button:hover{opacity:1}
+  .choices__list--single .choices__item{white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;font-weight:500}
+  .choices__list--dropdown{width:max(100%,380px);max-width:550px}
+  .badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;background:#dbeafe;color:#1e40af}
+  .dropzone{border:2px dashed #cbd5e1;border-radius:8px;padding:32px;text-align:center;cursor:pointer;transition:all .2s;background:#f8fafc}
+  .dropzone:hover,.dropzone.drag{border-color:#2563eb;background:#eff6ff}
+  .search-list{max-height:360px;overflow:auto}
+  .search-item{padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px}
+  .search-item:hover,.search-item.active{background:#f1f5f9}
+  .code-tag{display:inline-block;background:#2563eb;color:#fff;padding:1px 6px;border-radius:4px;font-size:10.5px;font-weight:700;margin-right:6px}
+  .spinner{border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;width:22px;height:22px;animation:sp 0.8s linear infinite;display:inline-block;vertical-align:middle}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .fade-in{animation:fi .3s ease-out}
+  @keyframes fi{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+  .pager{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
+  .pager button{border:1px solid #cbd5e1;background:#fff;padding:5px 11px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer}
+  .pager button.active{background:#2563eb;color:#fff;border-color:#2563eb}
+
+  /* THEMES */
+  body[data-theme="pro"]{background:#f1f5f9;--panel:#ffffff;--panel2:#f8fafc;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--accent:#2563eb;--accent2:#1d4ed8}
+  body[data-theme="glass"]{background:linear-gradient(135deg,#e0e7ff 0%,#fce7f3 50%,#dbeafe 100%);--panel:rgba(255,255,255,.7);--panel2:rgba(255,255,255,.55);--border:rgba(255,255,255,.6);--shadow:0 8px 32px rgba(31,38,135,.15)}
+  body[data-theme="glass"] .panel,body[data-theme="glass"] .kpi{backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px)}
+  body[data-theme="bento"]{background:#f1efe7;--panel:#fffdf6;--panel2:#fff8e6;--border:#e8e0cf;--accent:#e0642c;--accent2:#f4a63b}
+  body[data-theme="bento"] .kpi{border-radius:20px}
+  body[data-theme="cyber"]{background:#0a0e27;--panel:#111834;--panel2:#0d1330;--text:#e2e8f0;--muted:#94a3b8;--border:#1e293b;--accent:#22d3ee;--accent2:#a855f7;--shadow:0 0 40px rgba(34,211,238,.15)}
+  body[data-theme="cyber"] table.rtable thead th{background:linear-gradient(180deg,#1e293b,#0f172a);color:#22d3ee}
+  body[data-theme="cyber"] table.rtable th,body[data-theme="cyber"] table.rtable td{background:#111834;color:#e2e8f0;border-color:#1e293b}
+  body[data-theme="cyber"] table.rtable tfoot td{background:#1e293b;color:#22d3ee}
+  body[data-theme="cyber"] table.rtable td.sticky-col{background:#0d1330;color:#a855f7}
+  body[data-theme="cyber"] .grand{background:#3f2a1a !important}
+  body[data-theme="cyber"] .btn{background:#111834;color:#e2e8f0;border-color:#1e293b}
+  body[data-theme="cyber"] .choices__inner{background:#111834;color:#e2e8f0;border-color:#1e293b}
+  body[data-theme="minimal"]{background:#fafafa;--panel:#fff;--border:#eee;--accent:#111;--accent2:#333;--shadow:none}
+  body[data-theme="minimal"] .panel,body[data-theme="minimal"] .kpi{box-shadow:none;border:1px solid #eee}
+  body[data-theme="ai"]{background:radial-gradient(1200px 800px at 10% 0%,#1e1b4b 0%,#0f172a 60%,#020617 100%);--panel:rgba(17,24,39,.7);--panel2:rgba(30,41,59,.55);--text:#f1f5f9;--muted:#94a3b8;--border:rgba(148,163,184,.15);--accent:#8b5cf6;--accent2:#ec4899}
+  body[data-theme="ai"] .panel,body[data-theme="ai"] .kpi{backdrop-filter:blur(16px)}
+  body[data-theme="ai"] table.rtable th,body[data-theme="ai"] table.rtable td{background:rgba(17,24,39,.6);color:#f1f5f9;border-color:rgba(148,163,184,.15)}
+  body[data-theme="ai"] table.rtable thead th{background:linear-gradient(180deg,#312e81,#1e1b4b);color:#ec4899}
+  body[data-theme="ai"] table.rtable tfoot td{background:#312e81;color:#f1f5f9}
+  body[data-theme="ai"] table.rtable td.sticky-col{background:rgba(30,27,75,.9);color:#c4b5fd}
+  body[data-theme="ai"] .grand{background:#4c1d95 !important;color:#f1f5f9}
+  body[data-theme="ai"] .btn{background:rgba(30,41,59,.6);color:#f1f5f9;border-color:rgba(148,163,184,.2)}
+  body[data-theme="ai"] .choices__inner{background:rgba(30,41,59,.6);color:#f1f5f9;border-color:rgba(148,163,184,.2)}
+
+  /* layout fixes */
+  select.native, input.native{
+    background:var(--panel);color:var(--text);border:1px solid var(--border);
+    border-radius:10px;padding:8px 12px;font-size:13px;height:38px;transition:all .15s;
+  }
+  select.native:hover,input.native:hover{border-color:var(--accent)}
+  select.native:focus,input.native:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(11,94,215,.15)}
+  .chart-wrap{position:relative;width:100%;height:260px}
+  .chart-wrap.sm{height:220px}
+  .chart-wrap.lg{height:300px}
+  .filter-cell{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .filter-cell label{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  #reportTabs{overflow-x:auto;flex-wrap:nowrap!important;scrollbar-width:thin}
+  #reportTabs::-webkit-scrollbar{height:6px}
+  #reportTabs .tab{white-space:nowrap;flex-shrink:0;border:1px solid transparent}
+  #reportTabs .tab:not(.active):hover{background:rgba(11,94,215,.08);color:var(--text)}
+  table.rtable td.sticky-col{box-shadow:2px 0 6px -4px rgba(0,0,0,.15)}
+  .kpi .kpi-icon{font-size:20px;opacity:.85}
+  .topbar-search{width:min(320px,42vw)}
+  @media (max-width:768px){
+    .topbar-search{width:100%;order:3;flex:1 1 100%}
+    header.topbar{flex-wrap:wrap}
+  }
+  .drawer-overlay{position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:40;display:none}
+  .drawer-overlay.open{display:block}
+  @media (max-width:767px){
+    aside.sidebar.open{position:fixed;top:0;left:0;bottom:0;z-index:50;display:block;width:260px;overflow-y:auto}
+  }
+  .choices__list--dropdown,.choices__list[aria-expanded]{z-index:40!important}
+  body[data-theme="cyber"] .choices__list--dropdown,body[data-theme="ai"] .choices__list--dropdown{background:var(--panel);color:var(--text);border-color:var(--border)}
+  body[data-theme="cyber"] .choices__item--selectable.is-highlighted,body[data-theme="ai"] .choices__item--selectable.is-highlighted{background:rgba(139,92,246,.25)}
+  
+  #heatmap table{width:100%;border-collapse:separate;border-spacing:2px}
+  #heatmap th,#heatmap td{border-radius:4px;padding:4px 6px}
+  #heatmap th{background:var(--panel2);color:var(--muted);font-weight:600;font-size:11px;text-align:center}
+  #heatmap td:first-child{background:var(--panel2)!important;color:var(--text)!important;font-weight:600;text-align:left!important}
+  #treemap{grid-template-columns:repeat(6,1fr);grid-auto-rows:64px;gap:4px}
+  .report-controls{gap:8px}
+
+  /* --- PRINT-FRIENDLY CSS FIXES --- */
+  #printHeader{display:none}
+  @media print{
+    @page {
+      size: A4 landscape;
+      margin: 8mm;
+    }
+    html, body {
+      background: #ffffff !important;
+      color: #000000 !important;
+      font-size: 11px !important;
+    }
+    aside, header, #reportTabs, .pager, .dropzone, #filters, .report-controls, #searchPanel, #indModalOverlay, .expand-ind, .resizer, .btn, .choices, #dashEmpty {
+      display: none !important;
+    }
+    .app-shell {
+      display: block !important;
+    }
+    main {
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    section {
+      padding: 0 !important;
+    }
+    .panel {
+      box-shadow: none !important;
+      border: none !important;
+      background: transparent !important;
+      padding: 0 !important;
+    }
+    #printHeader {
+      display: block !important;
+      margin-bottom: 12px;
+      padding: 10px 14px;
+      border: 1.5px solid #0f172a;
+      border-radius: 8px;
+      background: #f8fafc !important;
+      color: #000000 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    .rtable-wrap {
+      max-height: none !important;
+      overflow: visible !important;
+      border: none !important;
+      box-shadow: none !important;
+      position: static !important;
+      background: transparent !important;
+    }
+    table.rtable {
+      width: 100% !important;
+      font-size: 9.5px !important;
+      border-collapse: collapse !important;
+    }
+    table.rtable th, table.rtable td {
+      position: static !important;
+      box-shadow: none !important;
+      background: #ffffff !important;
+      color: #000000 !important;
+      border: 1px solid #475569 !important;
+      padding: 5px 7px !important;
+      white-space: normal !important;
+      word-break: break-word !important;
+    }
+    table.rtable thead th {
+      background-color: #e2e8f0 !important;
+      font-weight: 700 !important;
+      text-align: left !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    table.rtable thead {
+      display: table-header-group !important;
+    }
+    table.rtable tr {
+      page-break-inside: avoid !important;
+    }
+    table.rtable tfoot {
+      display: table-footer-group !important;
+      font-weight: 700 !important;
+    }
+    table.rtable tfoot td {
+      background-color: #cbd5e1 !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
+
+  /* Auth gate: hide app shell until authenticated */
+  html:not(.authed) .app-shell{ display:none !important; }
+</style>
+</head>
+<body data-theme="pro">
+<script>
+  try{
+    if(sessionStorage.getItem('hmis_auth')==='1'){
+      document.documentElement.classList.add('authed');
+    }
+  }catch(e){}
+</script>
+<div id="drawerOverlay" class="drawer-overlay" onclick="toggleSidebar(false)"></div>
+<div class="app-shell flex min-h-screen">
+  <!-- SIDEBAR -->
+  <aside class="sidebar w-64 shrink-0 p-4 border-r border-[var(--border)] hidden md:block" style="background:var(--panel2)">
+    <div class="flex items-center gap-3 mb-6 px-2">
+      <div class="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold" style="background:linear-gradient(135deg,var(--accent),var(--accent2))">H</div>
+      <div>
+        <div class="font-bold text-sm leading-tight">PCTS &amp; HMIS</div>
+        <div class="text-[11px] text-[color:var(--muted)]">Monitoring System</div>
+      </div>
+    </div>
+    <nav id="nav" class="space-y-1">
+      <div class="nav-item active" data-view="dashboard">📊 Dashboard</div>
+      <div class="nav-item" data-view="upload">📁 Upload Data</div>
+      <div class="nav-item" data-view="reports">📑 Reports</div>
+      <div class="nav-item" data-view="indicators">🔎 Indicators</div>
+      <div class="nav-item" data-view="about">ℹ️ About</div>
+    </nav>
+    <div class="mt-6 p-3 rounded-xl border border-[var(--border)]" style="background:var(--panel)">
+      <div class="text-[11px] text-[color:var(--muted)] mb-1">Developed By</div>
+      <div class="text-sm font-semibold">RS Solanki, IA</div>
+      <div class="text-[11px] text-[color:var(--muted)] mt-1">Medical &amp; Health Department<br/>BCMHO, Banera</div>
+      <div class="mt-3 pt-2.5 border-t border-[var(--border)] flex items-center justify-between">
+        <div class="text-[11px] font-bold text-[color:var(--text)] flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="userRoleBadge">Logged In</span>
+        </div>
+        <button onclick="logout()" class="text-xs font-bold text-red-600 hover:text-red-700 flex items-center gap-1 hover:underline cursor-pointer">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          Logout
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 min-w-0">
+    <!-- TOP BAR -->
+    <header class="topbar sticky top-0 z-30 flex items-center gap-3 px-4 py-3 border-b border-[var(--border)]" style="background:var(--panel)">
+      <div class="md:hidden">
+        <button class="btn" onclick="toggleSidebar()">☰</button>
+      </div>
+      <h1 id="viewTitle" class="text-lg font-bold">Executive Dashboard</h1>
+      <div class="ml-auto flex items-center gap-2">
+        <div class="relative">
+          <input id="globalSearch" placeholder="Search indicator (e.g. ANC, M1, Delivery)…" class="native topbar-search" autocomplete="off"/>
+          <div id="searchPanel" class="hidden absolute right-0 mt-1 panel p-2 search-list z-40" style="width:min(460px,90vw)"></div>
+        </div>
+        <select id="themeSel" class="native" style="min-width:170px">
+          <option value="pro" selected>Professional Polish</option>
+          <option value="ai">AI Workspace</option>
+          <option value="glass">Apple Liquid Glass</option>
+          <option value="bento">Bento Dashboard</option>
+          <option value="cyber">Cyber Dark</option>
+          <option value="minimal">Minimal Enterprise</option>
+        </select>
+        <button onclick="logout()" class="btn px-3 py-1.5 text-xs font-bold text-red-600 hover:text-white hover:bg-red-600 border border-red-200 hover:border-red-600 transition-colors rounded-lg flex items-center gap-1.5 cursor-pointer" title="Log out of system">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span class="hidden sm:inline">Logout</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- CONTENT -->
+    <section class="p-4 md:p-6">
+      <!-- DASHBOARD VIEW -->
+      <div id="view-dashboard" class="view fade-in">
+        <div id="dashEmpty" class="panel p-10 text-center">
+          <div class="text-5xl mb-3">📥</div>
+          <div class="text-lg font-semibold mb-1">No HMIS file loaded</div>
+          <div class="text-sm text-[color:var(--muted)] mb-4">Upload the monthly HMIS Excel to activate the dashboard.</div>
+          <button class="btn btn-primary" onclick="setView('upload')">Upload HMIS Excel</button>
+        </div>
+        <div id="dashMain" class="hidden space-y-4">
+          <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3" id="kpis"></div>
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="panel p-4 lg:col-span-2">
+              <div class="flex items-center justify-between mb-2">
+                <div class="font-semibold text-sm">Monthly Trend</div>
+                <select id="trendIndicator" class="native" style="min-width:260px;max-width:100%;font-size:12px;height:32px;padding:4px 8px"></select>
+              </div>
+              <div class="chart-wrap lg"><canvas id="chTrend"></canvas></div>
+            </div>
+            <div class="panel p-4">
+              <div class="font-semibold text-sm mb-2">Distribution by Block</div>
+              <div class="chart-wrap lg"><canvas id="chDonut"></canvas></div>
+            </div>
+            <div class="panel p-4">
+              <div class="font-semibold text-sm mb-2">Top 10 Facilities</div>
+              <div class="chart-wrap"><canvas id="chTop"></canvas></div>
+            </div>
+            <div class="panel p-4">
+              <div class="font-semibold text-sm mb-2">Bottom 10 Facilities</div>
+              <div class="chart-wrap"><canvas id="chBot"></canvas></div>
+            </div>
+            <div class="panel p-4">
+              <div class="font-semibold text-sm mb-2">Sector Comparison</div>
+              <div class="chart-wrap"><canvas id="chRadar"></canvas></div>
+            </div>
+          </div>
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="panel p-4">
+              <div class="font-semibold text-sm mb-2">Block Performance Heatmap (by Month)</div>
+              <div id="heatmap" class="overflow-auto"></div>
+            </div>
+            <div class="panel p-4">
+              <div class="font-semibold text-sm mb-2">Facility Treemap (Top 30)</div>
+              <div id="treemap" class="grid"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- UPLOAD VIEW -->
+      <div id="view-upload" class="view hidden fade-in">
+        <div class="panel p-6 max-w-3xl mx-auto">
+          <h2 class="text-lg font-bold mb-1">Load HMIS Data</h2>
+          <p class="text-sm text-[color:var(--muted)] mb-4">Load directly from your Google Sheet (recommended) or upload an Excel file. Multi-row / merged headers are auto-detected.</p>
+
+          <div class="panel p-4 mb-4" style="background:var(--panel2)">
+            <div class="font-semibold text-sm mb-2">📊 Load from Google Sheet</div>
+            <div class="text-xs text-[color:var(--muted)] mb-2">Sheet must be public: <b>Share → General access → "Anyone with the link" → Viewer</b>. For best reliability use <b>File → Share → Publish to web</b> and paste that link instead.</div>
+            <div class="flex flex-wrap gap-2 items-center">
+              <input id="gsUrl" class="native" style="flex:1;min-width:260px" placeholder="https://docs.google.com/spreadsheets/d/…/edit#gid=0  (or a Publish-to-web link)"/>
+              <button id="gsLoadBtn" class="px-4 py-2 rounded-md text-white font-semibold" style="background:var(--accent)">Fetch &amp; Load</button>
+              <button id="gsSaveBtn" class="px-3 py-2 rounded-md border" title="Remember this sheet in this browser">💾 Save</button>
+            </div>
+            <div class="text-[11px] text-[color:var(--muted)] mt-2">Tip: You can also paste just the Sheet ID. Include <code>#gid=…</code> to target a specific tab.</div>
+          </div>
+
+          <div class="text-center text-xs text-[color:var(--muted)] my-2">— or —</div>
+
+          <label class="dropzone block" id="drop">
+            <input type="file" id="file" accept=".xlsx,.xls" class="hidden"/>
+            <div class="text-4xl">📄</div>
+            <div class="mt-2 font-semibold">Click or drop the HMIS .xlsx file here</div>
+            <div class="text-xs text-[color:var(--muted)] mt-1">e.g. HMIS_Data_upto_June_2026.xlsx</div>
+          </label>
+          <div id="fileMeta" class="hidden mt-4 text-sm"></div>
+          <div id="loadStatus" class="hidden mt-3 text-sm"><span class="spinner"></span> <span id="loadMsg">Parsing…</span></div>
+        </div>
+      </div>
+
+      <!-- REPORTS VIEW -->
+      <div id="view-reports" class="view hidden fade-in">
+        <div class="panel p-4 mb-4">
+          <div class="grid gap-3" id="filters" style="grid-template-columns:repeat(auto-fit,minmax(160px,1fr))">
+            <div class="filter-cell"><label class="font-bold text-blue-600">Report View</label><select id="fReportType" class="native font-semibold bg-blue-50/70 text-blue-900 border-blue-200">
+              <option value="1">District Wise Compile</option>
+              <option value="2">Block Wise Compile</option>
+              <option value="3">Sector Wise Compile</option>
+              <option value="4">Facility Wise Compile</option>
+              <option value="5">Indicator × Facility</option>
+              <option value="6">Indicator × Sector</option>
+              <option value="7">Indicator × Block</option>
+              <option value="8">Indicator × District</option>
+            </select></div>
+            <div class="filter-cell"><label>Financial Year</label><select id="fFy"></select></div>
+            <div class="filter-cell"><label>Month</label><select id="fMonth" multiple></select></div>
+            <div class="filter-cell"><label>District</label><select id="fDistrict" multiple></select></div>
+            <div class="filter-cell"><label>Block</label><select id="fBlock" multiple></select></div>
+            <div class="filter-cell"><label>Sector</label><select id="fSector" multiple></select></div>
+            <div class="filter-cell"><label>Facility / Subcenter</label><select id="fFacility" multiple></select></div>
+            <div class="filter-cell"><label>Indicator</label><select id="fIndicator" multiple></select></div>
+          </div>
+          <div class="flex flex-wrap gap-2 mt-4 items-center report-controls">
+            <input id="tableSearch" placeholder="Search rows…" class="native" style="min-width:180px"/>
+            <select id="pageSize" class="native" style="min-width:90px"><option>25</option><option selected>50</option><option>100</option><option>250</option><option value="9999999">All</option></select>
+            <button class="btn" onclick="Report.reset()">Reset Filters</button>
+            <span class="mx-2 opacity-40">|</span>
+            <button class="btn" onclick="Exporter.excel()">⬇ Excel</button>
+            <button class="btn" onclick="Exporter.pdf()">⬇ PDF</button>
+            <button class="btn bg-blue-600 text-white hover:bg-blue-700 font-bold" onclick="Exporter.bulkFacilityPdf()" title="Export individual facility PDFs for selected block in bulk">📦 Bulk Facility PDFs</button>
+            <button class="btn" onclick="Exporter.jpg()">⬇ JPG</button>
+            <button class="btn btn-primary" onclick="Exporter.print()">🖨 Print Report</button>
+            <span class="ml-auto text-xs text-[color:var(--muted)]" id="reportInfo"></span>
+          </div>
+        </div>
+
+        <!-- PRINT HEADER (VISIBLE ONLY DURING PRINT) -->
+        <div id="printHeader"></div>
+
+        <div id="reportHost" class="panel p-4">
+          <div class="text-sm text-[color:var(--muted)]">Upload a file to view reports.</div>
+        </div>
+      </div>
+
+      <!-- INDICATORS VIEW -->
+      <div id="view-indicators" class="view hidden fade-in">
+        <div class="panel p-4">
+          <div class="flex items-center gap-2 mb-3">
+            <input id="indSearch" class="native flex-1" placeholder="Search indicators by code, name, or keyword…"/>
+            <span class="text-xs text-[color:var(--muted)]" id="indCount"></span>
+          </div>
+          <div id="indList" class="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-[70vh] overflow-auto"></div>
+        </div>
+      </div>
+
+      <!-- ABOUT -->
+      <div id="view-about" class="view hidden fade-in">
+        <div class="panel p-6 max-w-3xl">
+          <h2 class="text-lg font-bold">PCTS &amp; HMIS Monitoring System</h2>
+            <div class="text-xs text-[color:var(--muted)]">Office of Block Chief Medical &amp; Health Officer, Banera (Bhilwara)</div>
+          <p class="text-sm text-[color:var(--muted)] mt-1">Enterprise Government MIS Platform for HMIS monthly monitoring &amp; reporting.</p>
+          <div class="mt-4 text-sm space-y-2">
+            <div><b>Developed By:</b> RS Solanki, IA</div>
+            <div><b>Department:</b> Medical &amp; Health Department</div>
+            <div><b>Office:</b> Block Chief Medical Health Officer, Banera</div>
+            <div><b>Version:</b> 1.1.0</div>
+          </div>
+          <div class="mt-4 p-3 rounded-lg border border-[var(--border)] text-xs text-[color:var(--muted)]" style="background:var(--panel2)">
+            The tool automatically parses any HMIS export, remaps indicators, and produces District / Block / Sector / Facility / Indicator compile reports with dynamic filters, print-friendly formatting, and detailed PDF exports. All processing runs locally in the browser.
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+</div>
+
+<!-- Full Indicator Name Modal -->
+<div id="indModalOverlay" class="hidden" style="position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:100;display:none;align-items:center;justify-content:center;padding:20px">
+  <div class="panel" style="max-width:560px;width:100%;padding:20px;max-height:80vh;overflow:auto">
+    <div class="flex items-start justify-between gap-3">
+      <div class="flex-1">
+        <div id="indModalCode" class="code-tag" style="font-size:12px"></div>
+        <h3 id="indModalName" class="text-base font-semibold mt-2" style="line-height:1.5;word-break:break-word"></h3>
+        <div id="indModalSection" class="text-xs text-[color:var(--muted)] mt-2"></div>
+      </div>
+      <button id="indModalClose" class="btn" style="padding:4px 10px;font-size:16px;line-height:1">✕</button>
+    </div>
+    <div class="flex gap-2 mt-4">
+      <button id="indModalCopy" class="btn btn-primary">📋 Copy Full Name</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* =========================================================================
+   PCTS & HMIS Monitoring System - Single-file enterprise application
+   Modular in-browser architecture (no backend).
+   ========================================================================= */
+
+// ---------------------- Utility Engine -----------------------------
+const Util = {
+  fmt(n){ if(n==null||isNaN(n))return ''; return Number(n).toLocaleString('en-IN'); },
+  norm(s){ return (s==null?'':String(s)).replace(/\s+/g,' ').trim(); },
+  monthKey(str){
+    const s = Util.norm(str);
+    const M={Jan:1,Feb:2,Mar:3,Apr:4,May:5,Jun:6,Jul:7,Aug:8,Sep:9,Sept:9,Oct:10,Nov:11,Dec:12,
+             January:1,February:2,March:3,April:4,June:6,July:7,August:8,September:9,October:10,November:11,December:12};
+    let m,y;
+    let mm = s.match(/^([A-Za-z]+)[-\s\/]+(\d{2,4})$/);
+    if(mm){ m=M[mm[1]]||M[mm[1].slice(0,3)]; y=+mm[2]; if(y<100)y+=2000; }
+    else { mm = s.match(/^(\d{4})[-\/](\d{1,2})/); if(mm){y=+mm[1];m=+mm[2];} }
+    if(!m||!y) return {key:'zz-'+s,label:s,sort:9e9,year:0,mo:0};
+    return {key:y*100+m,label:s,sort:y*100+m,year:y,mo:m};
+  },
+  fyOf(m){ if(!m||!m.mo) return ''; const start = m.mo>=4?m.year:m.year-1; return `FY${start}-${String(start+1).slice(2)}`; },
+  download(blob,name){ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000); },
+  debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)};},
+  esc(s){ return (s==null?'':String(s)).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); },
+};
+
+// ---------------------- Location & Filter Header Meta ----------------
+function getReportFilterMeta(){
+  if(!Store.data) return null;
+  const f = Store.filters;
+  const recs = FilterEngine.apply();
+  
+  const distList = f.districts.length ? f.districts : (FilterEngine.distinct(recs, 'district').length === 1 ? FilterEngine.distinct(recs, 'district') : []);
+  const blockList = f.blocks.length ? f.blocks : [];
+  const sectorList = f.sectors.length ? f.sectors : [];
+  const facList = f.facilities.length ? f.facilities : [];
+  
+  const distStr = distList.length ? distList.join(', ') : 'All Districts';
+  const blockStr = blockList.length ? blockList.join(', ') : 'All Blocks';
+  const sectorStr = sectorList.length ? sectorList.join(', ') : 'All Sectors';
+  const facStr = facList.length ? facList.join(', ') : 'All Facilities / Subcenters';
+  
+  const fyStr = f.fy || 'All FYs';
+  const monthList = f.months.length ? f.months : FilterEngine.distinctMonths(recs);
+  const monthStr = monthList.length ? monthList.join(', ') : 'All Months';
+  
+  let indStr = 'All Indicators';
+  if(f.indicators.length){
+    indStr = f.indicators.map(code=>{
+      const found = Store.data.indicators.find(i=>i.code===code);
+      return found ? `${code} — ${found.name}` : code;
+    }).join('; ');
+  } else {
+    const currentModel = Report.build();
+    if(currentModel && currentModel.focus){
+      indStr = `${currentModel.focus.code} — ${currentModel.focus.name}`;
+    }
+  }
+
+  return {
+    district: distStr,
+    block: blockStr,
+    sector: sectorStr,
+    facility: facStr,
+    fy: fyStr,
+    months: monthStr,
+    indicator: indStr,
+    generatedAt: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })
+  };
+}
+
+// ---------------------- Excel + Mapping Engine ---------------------
+const ExcelEngine = {
+  async parse(file){
+    const buf = await file.arrayBuffer();
+    return ExcelEngine.parseBuffer(buf);
+  },
+  async parseBuffer(buf, kind){
+    let wb;
+    if(kind==='csv'){
+      const text = (typeof buf==='string') ? buf : new TextDecoder('utf-8').decode(buf);
+      wb = XLSX.read(text,{type:'string',cellDates:false});
+    } else {
+      wb = XLSX.read(buf,{type:'array',cellDates:false});
+    }
+    const wsName = wb.SheetNames[0];
+    const ws = wb.Sheets[wsName];
+    const merges = ws['!merges']||[];
+    for(const m of merges){
+      const v = ws[XLSX.utils.encode_cell({r:m.s.r,c:m.s.c})];
+      if(!v) continue;
+      for(let r=m.s.r;r<=m.e.r;r++)for(let c=m.s.c;c<=m.e.c;c++){
+        const addr=XLSX.utils.encode_cell({r,c});
+        if(!ws[addr]) ws[addr]={t:v.t,v:v.v,w:v.w};
+      }
+    }
+    const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:null,raw:true});
+    let dataStart = -1;
+    for(let r=0;r<Math.min(rows.length,15);r++){
+      const row=rows[r]||[];
+      const hasStr = row[0] && typeof row[0]==='string' && Util.norm(row[0]).length>0;
+      const nums = row.slice(6).filter(v=>typeof v==='number').length;
+      if(hasStr && nums>3){ dataStart=r; break; }
+    }
+    if(dataStart<0) dataStart=3;
+    const headerRows = rows.slice(0,dataStart);
+    const nCols = Math.max(...headerRows.map(r=>r?r.length:0),0);
+    if(!merges.length){
+      for(let r=0;r<headerRows.length;r++){
+        const row = headerRows[r] || (headerRows[r]=[]);
+        let last=null;
+        for(let c=0;c<nCols;c++){
+          const v = row[c];
+          if(v!=null && Util.norm(v)!=='') last = v;
+          else if(last!=null) row[c] = last;
+        }
+      }
+    }
+
+    const cols=[];
+    for(let c=0;c<nCols;c++){
+      const parts=[];
+      for(let r=0;r<headerRows.length;r++){
+        const v = headerRows[r] && headerRows[r][c];
+        if(v!=null && Util.norm(v)) parts.push(Util.norm(v));
+      }
+      const uniq=[]; for(const p of parts) if(uniq[uniq.length-1]!==p) uniq.push(p);
+      cols.push({idx:c, raw: uniq});
+    }
+
+    const metaMap = {district:null,block:null,sector:null,facilityCode:null,facility:null,month:null,fy:null};
+    const metaHints = {
+      district:/district/i, block:/block/i, sector:/sector/i,
+      facilityCode:/facility.*code|code/i, facility:/facility(?!\s*code)|health\s*facility|institution|subcenter/i,
+      month:/month|period/i, fy:/financial.*year|fy\b/i
+    };
+    for(const c of cols){
+      const label = c.raw.join(' | ');
+      for(const k in metaHints){
+        if(metaMap[k]==null && metaHints[k].test(label)){ metaMap[k]=c.idx; break; }
+      }
+    }
+    const fallback=['district','block','sector','facilityCode','facility','month'];
+    for(let i=0;i<fallback.length;i++) if(metaMap[fallback[i]]==null) metaMap[fallback[i]]=i;
+
+    const metaCols = new Set(Object.values(metaMap).filter(v=>v!=null));
+    const indicators=[]; let idxCounter=0;
+    for(const c of cols){
+      if(metaCols.has(c.idx)) continue;
+      const raw=c.raw;
+      let sectionCode='',sectionName='',indicatorName='';
+      const section = raw[0]||'';
+      const secM = section.match(/^([A-Z]\d+)\s*[\[\(\-:]*\s*(.+?)[\]\)]?$/);
+      if(secM){ sectionCode=secM[1]; sectionName=Util.norm(secM[2]||section); } else { sectionName=section; }
+      indicatorName = raw.slice(1).join(' — ') || section;
+      let subCode='';
+      const im = indicatorName.match(/^([\d]+(?:\.[\da-z]+)*)\s*(?:::|:|\-|—)?\s*(.*)$/i);
+      if(im){ subCode=im[1]; indicatorName=Util.norm(im[2]||indicatorName); }
+      const shortCode = [sectionCode,subCode].filter(Boolean).join('.') || ('X'+(++idxCounter));
+      indicators.push({
+        col:c.idx,
+        code:shortCode,
+        sectionCode, sectionName,
+        name: indicatorName || sectionName || shortCode,
+        full: `${shortCode} — ${indicatorName}${sectionName?' ('+sectionName+')':''}`,
+        searchText: [shortCode,indicatorName,sectionName,section].join(' ').toLowerCase()
+      });
+    }
+
+    const records=[];
+    for(let r=dataStart;r<rows.length;r++){
+      const row=rows[r]; if(!row) continue;
+      const dist=row[metaMap.district], blk=row[metaMap.block];
+      if(!dist && !blk) continue;
+      const monthRaw = row[metaMap.month];
+      const mk = Util.monthKey(monthRaw);
+      const rec = {
+        district: Util.norm(dist),
+        block: Util.norm(blk),
+        sector: Util.norm(row[metaMap.sector]),
+        facilityCode: Util.norm(row[metaMap.facilityCode]),
+        facility: Util.norm(row[metaMap.facility]),
+        month: mk.label || Util.norm(monthRaw),
+        monthKey: mk.key, monthSort: mk.sort, year:mk.year, mo:mk.mo,
+        fy: metaMap.fy!=null? Util.norm(row[metaMap.fy]) : Util.fyOf(mk),
+        values:{}
+      };
+      for(const ind of indicators){
+        const v=row[ind.col];
+        rec.values[ind.code] = (typeof v==='number')?v:(v==null||v===''?null:(+v||0));
+      }
+      records.push(rec);
+    }
+
+    return {sheet:wsName, headerRows, indicators, records, metaMap};
+  }
+};
+
+// ---------------------- Indicator Engine ---------------------------
+const IndicatorEngine = {
+  build(indicators){
+    this.list = indicators;
+    this.fuse = new Fuse(indicators,{keys:['code','name','sectionName','full','searchText'],threshold:0.35,ignoreLocation:true});
+    this.byCode = new Map(indicators.map(i=>[i.code,i]));
+  },
+  search(q){
+    if(!q) return this.list.slice(0,200);
+    return this.fuse.search(q).map(r=>r.item);
+  }
+};
+
+// ---------------------- Store --------------------------------------
+const Store = {
+  data:null,
+  currentReport:1,
+  filters:{fy:'',months:[],districts:[],blocks:[],sectors:[],facilities:[],indicators:[]},
+  page:1, pageSize:50, sort:{col:null,dir:1}, tableQuery:'',
+  set(data){ this.data=data; this.currentReport=1; this.filters={fy:'',months:[],districts:[],blocks:[],sectors:[],facilities:[],indicators:[]}; this.page=1; },
+};
+
+// ---------------------- Filter Engine ------------------------------
+const FilterEngine = {
+  choices:{},
+  init(){
+    const d = Store.data; if(!d) return;
+    this.rebuild();
+    for(const id of ['fFy','fMonth','fDistrict','fBlock','fSector','fFacility','fIndicator']){
+      document.getElementById(id).addEventListener('change',()=>{ this.readFilters(); this.rebuildDependents(); Report.render(); Dashboard.render(); });
+    }
+  },
+  destroyChoice(id){ if(this.choices[id]){ this.choices[id].destroy(); delete this.choices[id]; } },
+  build(id, opts, multi=true){
+    this.destroyChoice(id);
+    const el=document.getElementById(id);
+    el.innerHTML='';
+    if(!multi){
+      const o=document.createElement('option'); o.value=''; o.textContent='All'; el.appendChild(o);
+    }
+    for(const o of opts){ const opt=document.createElement('option'); opt.value=o.value; opt.textContent=o.label; el.appendChild(opt); }
+    this.choices[id]=new Choices(el,{removeItemButton:multi, shouldSort:false, placeholder:true, placeholderValue: multi?'All':'', searchPlaceholderValue:'Search…', allowHTML:false});
+  },
+  distinct(recs,key){ return [...new Set(recs.map(r=>r[key]).filter(Boolean))].sort(); },
+  distinctMonths(recs){
+    const map=new Map();
+    for(const r of recs) if(r.month) map.set(r.month,r.monthSort||0);
+    return [...map.entries()].sort((a,b)=>a[1]-b[1]).map(e=>e[0]);
+  },
+  rebuild(){
+    const recs = Store.data.records;
+    const fys = [...new Set(recs.map(r=>r.fy).filter(Boolean))].sort();
+    this.build('fFy', fys.map(v=>({value:v,label:v})), false);
+    this.build('fMonth', this.distinctMonths(recs).map(v=>({value:v,label:v})));
+    this.build('fDistrict', this.distinct(recs,'district').map(v=>({value:v,label:v})));
+    this.build('fBlock', this.distinct(recs,'block').map(v=>({value:v,label:v})));
+    this.build('fSector', this.distinct(recs,'sector').map(v=>({value:v,label:v})));
+    this.build('fFacility', this.distinct(recs,'facility').map(v=>({value:v,label:v})));
+    this.build('fIndicator', Store.data.indicators.map(i=>({value:i.code,label:`${i.code} — ${i.name}`})));
+  },
+  readFilters(){
+    const g=id=>{ const el=document.getElementById(id); return Array.from(el.selectedOptions).map(o=>o.value).filter(Boolean); };
+    Store.filters.fy = document.getElementById('fFy').value||'';
+    Store.filters.months = g('fMonth');
+    Store.filters.districts = g('fDistrict');
+    Store.filters.blocks = g('fBlock');
+    Store.filters.sectors = g('fSector');
+    Store.filters.facilities = g('fFacility');
+    Store.filters.indicators = g('fIndicator');
+  },
+  rebuildDependents(){
+    const f=Store.filters, all=Store.data.records;
+    const scope = all.filter(r=>(!f.fy||r.fy===f.fy)&&(!f.districts.length||f.districts.includes(r.district)));
+    const blocks=this.distinct(scope,'block');
+    this.build('fBlock', blocks.map(v=>({value:v,label:v})));
+    this.choices.fBlock.setChoiceByValue(f.blocks.filter(v=>blocks.includes(v)));
+    const scope2=scope.filter(r=>!f.blocks.length||f.blocks.includes(r.block));
+    const sectors=this.distinct(scope2,'sector');
+    this.build('fSector', sectors.map(v=>({value:v,label:v})));
+    this.choices.fSector.setChoiceByValue(f.sectors.filter(v=>sectors.includes(v)));
+    const scope3=scope2.filter(r=>!f.sectors.length||f.sectors.includes(r.sector));
+    const facs=this.distinct(scope3,'facility');
+    this.build('fFacility', facs.map(v=>({value:v,label:v})));
+    this.choices.fFacility.setChoiceByValue(f.facilities.filter(v=>facs.includes(v)));
+  },
+  apply(){
+    const f=Store.filters, all=Store.data.records;
+    return all.filter(r=>
+      (!f.fy || r.fy===f.fy) &&
+      (!f.months.length || f.months.includes(r.month)) &&
+      (!f.districts.length || f.districts.includes(r.district)) &&
+      (!f.blocks.length || f.blocks.includes(r.block)) &&
+      (!f.sectors.length || f.sectors.includes(r.sector)) &&
+      (!f.facilities.length || f.facilities.includes(r.facility))
+    );
+  },
+};
+
+// ---------------------- Report Engine ------------------------------
+const REPORT_DEFS = {
+  1:{title:'District Wise Compile Report',rowKey:'district',rowLabel:'District',mode:'indicatorRows'},
+  2:{title:'Block Wise Compile Report',   rowKey:'block',   rowLabel:'Block',   mode:'indicatorRows'},
+  3:{title:'Sector Wise Compile Report',  rowKey:'sector',  rowLabel:'Sector',  mode:'indicatorRows'},
+  4:{title:'Facility / Subcenter Wise Compile Report',rowKey:'facility',rowLabel:'Facility / Subcenter',mode:'indicatorRows'},
+  5:{title:'Indicator Wise Facility / Subcenter Report',rowKey:'facility',rowLabel:'Facility / Subcenter',mode:'monthRows'},
+  6:{title:'Indicator Wise Sector Report',  rowKey:'sector',  rowLabel:'Sector',  mode:'monthRows'},
+  7:{title:'Indicator Wise Block Report',   rowKey:'block',   rowLabel:'Block',   mode:'monthRows'},
+  8:{title:'Indicator Wise District Report',rowKey:'district',rowLabel:'District',mode:'monthRows'},
+};
+
+const Report = {
+  reset(){
+    Store.filters={fy:'',months:[],districts:[],blocks:[],sectors:[],facilities:[],indicators:[]};
+    FilterEngine.rebuild();
+    if(typeof setReportType==='function') setReportType(1);
+    else { Store.currentReport=1; this.render(); }
+    Dashboard.render();
+  },
+  build(){
+    if(!Store.data) return null;
+    const def=REPORT_DEFS[Store.currentReport];
+    const recs=FilterEngine.apply();
+    const f=Store.filters;
+    const months = FilterEngine.distinctMonths(recs);
+    const inds = f.indicators.length ? Store.data.indicators.filter(i=>f.indicators.includes(i.code)) : Store.data.indicators;
+
+    if(def.mode==='indicatorRows'){
+      const rows = inds.map(ind=>{
+        const cells={}; let gt=0;
+        for(const m of months){ cells[m]=0; }
+        for(const r of recs){
+          const v=r.values[ind.code]; if(v==null) continue;
+          cells[r.month]=(cells[r.month]||0)+v; gt+=v;
+        }
+        return {label:`${ind.code} — ${ind.name}`, code:ind.code, name:ind.name, section:ind.sectionName, cells, total:gt};
+      });
+      const totalCells={}; let totalAll=0;
+      for(const m of months){ let s=0; for(const r of rows) s+=r.cells[m]||0; totalCells[m]=s; totalAll+=s; }
+      return {def,months,rows,total:{cells:totalCells,total:totalAll},rowLabel:def.rowLabel+' / Indicator'};
+    } else {
+      const focus = inds[0];
+      if(!focus) return {def,months,rows:[],total:{cells:{},total:0},rowLabel:def.rowLabel,focus:null};
+      const groups=[...new Set(recs.map(r=>r[def.rowKey]).filter(Boolean))].sort();
+      const rows=groups.map(g=>{
+        const cells={}; let gt=0;
+        for(const m of months) cells[m]=0;
+        for(const r of recs){
+          if(r[def.rowKey]!==g) continue;
+          const v=r.values[focus.code]; if(v==null) continue;
+          cells[r.month]=(cells[r.month]||0)+v; gt+=v;
+        }
+        return {label:g,code:g,cells,total:gt};
+      });
+      const totalCells={}; let totalAll=0;
+      for(const m of months){ let s=0; for(const r of rows) s+=r.cells[m]||0; totalCells[m]=s; totalAll+=s; }
+      return {def,months,rows,total:{cells:totalCells,total:totalAll},rowLabel:def.rowLabel,focus};
+    }
+  },
+  render(){
+    const host=document.getElementById('reportHost');
+    if(!Store.data){ host.innerHTML='<div class="text-sm text-[color:var(--muted)]">Upload a file to view reports.</div>'; return; }
+    const model=this.build();
+    if(!model){ host.innerHTML=''; return; }
+
+    const meta = getReportFilterMeta();
+
+    const prHead = document.getElementById('printHeader');
+    if(prHead && meta){
+      prHead.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom:1.5px solid #0f172a; padding-bottom:6px; margin-bottom:8px">
+          <div>
+            <h1 style="font-size:16px; font-weight:800; text-transform:uppercase; margin:0; color:#0f172a">PCTS & HMIS MONITORING SYSTEM</h1>
+            <div style="font-size:11px; font-weight:600; color:#334155; margin-top:2px">Medical & Health Department — BCMHO, Banera (Bhilwara)</div>
+          </div>
+          <div style="text-align:right; font-size:10px; color:#475569">
+            <div><b>Report Type:</b> ${model.def.title}</div>
+            <div><b>Print Date:</b> ${meta.generatedAt}</div>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; font-size:10px; color:#1e293b">
+          <div><b>District:</b> ${Util.esc(meta.district)}</div>
+          <div><b>Block:</b> ${Util.esc(meta.block)}</div>
+          <div><b>Sector:</b> ${Util.esc(meta.sector)}</div>
+          <div><b>Facility / SC:</b> ${Util.esc(meta.facility)}</div>
+          <div><b>Fin. Year:</b> ${Util.esc(meta.fy)}</div>
+          <div><b>Month(s):</b> ${Util.esc(meta.months)}</div>
+          <div style="grid-column: span 2"><b>Indicator:</b> ${Util.esc(meta.indicator)}</div>
+        </div>
+      `;
+    }
+
+    const q=(Store.tableQuery||'').toLowerCase();
+    let rows=model.rows;
+    if(q) rows=rows.filter(r=>r.label.toLowerCase().includes(q));
+    if(Store.sort.col){
+      const c=Store.sort.col, dir=Store.sort.dir;
+      rows=rows.slice().sort((a,b)=>{
+        const va = c==='__label'?a.label:(c==='__total'?a.total:(a.cells[c]||0));
+        const vb = c==='__label'?b.label:(c==='__total'?b.total:(b.cells[c]||0));
+        if(va<vb) return -1*dir; if(va>vb) return 1*dir; return 0;
+      });
+    }
+    const total=rows.length;
+    const ps=Store.pageSize; const pages=Math.max(1,Math.ceil(total/ps));
+    if(Store.page>pages) Store.page=1;
+    const start=(Store.page-1)*ps, end=Math.min(start+ps,total);
+    const pageRows=rows.slice(start,end);
+
+    let focusBadge = model.focus ? `<span class="badge ml-2">${model.focus.code} — ${model.focus.name}</span>` : '';
+
+    let html=`<div class="flex items-center gap-2 mb-3"><h3 class="font-bold text-base">${model.def.title}</h3>${focusBadge}<span class="ml-auto text-xs text-[color:var(--muted)]">${Util.fmt(total)} rows · ${model.months.length} months</span></div>`;
+    html += `<div class="rtable-wrap" id="rtableWrap"><table class="rtable" id="rtable"><thead><tr>`;
+    html += `<th class="sticky-col" data-col="__label">${model.rowLabel} <span class="opacity-40">⇅</span><span class="resizer"></span></th>`;
+    for(const m of model.months) html += `<th class="num" data-col="${m}">${m}<span class="resizer"></span></th>`;
+    html += `<th class="num grand" data-col="__total">Grand Total<span class="resizer"></span></th>`;
+    html += `</tr></thead><tbody>`;
+    for(const r of pageRows){
+      const safeLabel=Util.esc(r.label), safeCode=Util.esc(r.code||''), safeName=Util.esc(r.name||r.label), safeSection=Util.esc(r.section||'');
+      html += `<tr><td class="sticky-col" title="${safeLabel}">${r.label}<span class="expand-ind" data-code="${safeCode}" data-name="${safeName}" data-section="${safeSection}" title="Full text dekhein">⤢</span></td>`;
+      for(const m of model.months) html += `<td class="num">${Util.fmt(r.cells[m])}</td>`;
+      html += `<td class="num grand">${Util.fmt(r.total)}</td></tr>`;
+    }
+    html += `</tbody><tfoot><tr><td class="sticky-col">Grand Total</td>`;
+    for(const m of model.months) html += `<td class="num grand">${Util.fmt(model.total.cells[m])}</td>`;
+    html += `<td class="num grand">${Util.fmt(model.total.total)}</td></tr></tfoot></table></div>`;
+    html += `<div class="flex items-center gap-3 mt-3"><div class="text-xs text-[color:var(--muted)]">Showing ${total?start+1:0}-${end} of ${Util.fmt(total)}</div><div class="pager ml-auto" id="pager"></div></div>`;
+    host.innerHTML=html;
+
+    document.getElementById('reportInfo').textContent = `${model.rows.length} rows · ${model.months.length} months`;
+
+    host.querySelectorAll('.expand-ind').forEach(ic=>{
+      ic.addEventListener('click',e=>{
+        e.stopPropagation();
+        IndicatorModal.open(ic.dataset.code, ic.dataset.name, ic.dataset.section);
+      });
+    });
+
+    host.querySelectorAll('thead th').forEach(th=>{
+      th.addEventListener('click',e=>{
+        if(e.target.classList.contains('resizer')) return;
+        const c=th.dataset.col;
+        if(Store.sort.col===c) Store.sort.dir*=-1; else { Store.sort.col=c; Store.sort.dir=1; }
+        Report.render();
+      });
+    });
+    
+    host.querySelectorAll('th .resizer').forEach(rz=>{
+      let sx,sw,th;
+      rz.addEventListener('mousedown',e=>{th=rz.parentElement;sx=e.clientX;sw=th.offsetWidth;e.preventDefault();
+        const mm=ev=>{th.style.width=(sw+ev.clientX-sx)+'px';th.style.minWidth=th.style.width;};
+        const mu=()=>{document.removeEventListener('mousemove',mm);document.removeEventListener('mouseup',mu);};
+        document.addEventListener('mousemove',mm);document.addEventListener('mouseup',mu);
+      });
+    });
+
+    const p=document.getElementById('pager');
+    const mk=(n,lbl,act,dis)=>{const b=document.createElement('button');b.textContent=lbl||n;if(act)b.classList.add('active');if(dis)b.disabled=true;b.onclick=()=>{Store.page=n;Report.render();};return b;};
+    p.appendChild(mk(1,'«',false,Store.page===1));
+    p.appendChild(mk(Math.max(1,Store.page-1),'‹',false,Store.page===1));
+    const win=2; for(let i=Math.max(1,Store.page-win);i<=Math.min(pages,Store.page+win);i++) p.appendChild(mk(i,String(i),i===Store.page));
+    p.appendChild(mk(Math.min(pages,Store.page+1),'›',false,Store.page===pages));
+    p.appendChild(mk(pages,'»',false,Store.page===pages));
+  }
+};
+
+// ---------------------- Dashboard Engine ---------------------------
+const Dashboard = {
+  charts:{},
+  render(){
+    if(!Store.data){document.getElementById('dashEmpty').classList.remove('hidden');document.getElementById('dashMain').classList.add('hidden');return;}
+    document.getElementById('dashEmpty').classList.add('hidden');
+    document.getElementById('dashMain').classList.remove('hidden');
+    const recs=FilterEngine.apply();
+    const uniq=(k)=>new Set(recs.map(r=>r[k]).filter(Boolean)).size;
+    const kpis=[
+      ['Districts',uniq('district'),'📍'],['Blocks',uniq('block'),'🏛'],['Sectors',uniq('sector'),'🗂'],
+      ['Facilities / SCs',uniq('facility'),'🏥'],['Indicators',Store.data.indicators.length,'📈'],['Records',recs.length,'🧾']
+    ];
+    document.getElementById('kpis').innerHTML=kpis.map(([l,v,i])=>
+      `<div class="kpi"><div class="flex items-center justify-between mb-2"><div class="text-[10px] text-[color:var(--muted)] uppercase tracking-wider font-semibold">${l}</div><div class="kpi-icon">${i}</div></div><div class="text-2xl font-bold">${Util.fmt(v)}</div></div>`
+    ).join('');
+
+    const inds = Store.data.indicators;
+    const trendSel=document.getElementById('trendIndicator');
+    if(trendSel.options.length!==inds.length){
+      trendSel.innerHTML=inds.slice(0,500).map(i=>`<option value="${i.code}" title="${Util.esc(i.code+' — '+i.name)}">${Util.esc(i.code+' — '+i.name)}</option>`).join('');
+      trendSel.onchange=()=>this.render();
+    }
+    const focusCode = trendSel.value || (inds[0] && inds[0].code); if(!focusCode) return;
+
+    const months=FilterEngine.distinctMonths(recs);
+    const trendData = months.map(m=>{
+      let s=0; for(const r of recs) if(r.month===m){const v=r.values[focusCode]; if(v!=null) s+=v;} return s;
+    });
+    this._chart('chTrend','line',{labels:months,datasets:[{label:focusCode,data:trendData,borderColor:'#0ea5e9',backgroundColor:'rgba(14,165,233,.15)',fill:true,tension:.35,pointRadius:3}]});
+
+    const blockAgg={};
+    for(const r of recs){const v=r.values[focusCode]; if(v!=null) blockAgg[r.block]=(blockAgg[r.block]||0)+v;}
+    const bLabels=Object.keys(blockAgg), bVals=bLabels.map(k=>blockAgg[k]);
+    this._chart('chDonut','doughnut',{labels:bLabels,datasets:[{data:bVals,backgroundColor:this._palette(bLabels.length)}]});
+
+    const facAgg={};
+    for(const r of recs){const v=r.values[focusCode]; if(v!=null) facAgg[r.facility]=(facAgg[r.facility]||0)+v;}
+    const sorted=Object.entries(facAgg).sort((a,b)=>b[1]-a[1]);
+    const top=sorted.slice(0,10), bot=sorted.slice(-10).reverse();
+    this._chart('chTop','bar',{labels:top.map(t=>t[0]),datasets:[{label:'Top',data:top.map(t=>t[1]),backgroundColor:'#10b981'}]},{indexAxis:'y'});
+    this._chart('chBot','bar',{labels:bot.map(t=>t[0]),datasets:[{label:'Bottom',data:bot.map(t=>t[1]),backgroundColor:'#f59e0b'}]},{indexAxis:'y'});
+
+    const secAgg={};
+    for(const r of recs){const v=r.values[focusCode]; if(v!=null) secAgg[r.sector]=(secAgg[r.sector]||0)+v;}
+    const secTop=Object.entries(secAgg).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    this._chart('chRadar','radar',{labels:secTop.map(x=>x[0]),datasets:[{label:focusCode,data:secTop.map(x=>x[1]),borderColor:'#8b5cf6',backgroundColor:'rgba(139,92,246,.25)'}]});
+
+    const blocks=[...new Set(recs.map(r=>r.block).filter(Boolean))].sort();
+    const grid=blocks.map(b=>months.map(m=>{let s=0;for(const r of recs) if(r.block===b&&r.month===m){const v=r.values[focusCode];if(v!=null)s+=v;} return s;}));
+    const max=Math.max(1,...grid.flat());
+    let hm=`<table class="text-[11px]"><tr><th class="p-1 text-left">Block \\ Month</th>${months.map(m=>`<th class="p-1">${m}</th>`).join('')}</tr>`;
+    blocks.forEach((b,i)=>{
+      hm+=`<tr><td class="p-1 font-semibold">${b}</td>`;
+      grid[i].forEach(v=>{const a=Math.min(1,v/max);hm+=`<td class="p-1 text-right" style="background:rgba(11,94,215,${a.toFixed(2)});color:${a>.5?'#fff':'#0f172a'}">${Util.fmt(v)}</td>`;});
+      hm+=`</tr>`;
+    });
+    hm+=`</table>`;
+    document.getElementById('heatmap').innerHTML=hm;
+
+    const tm=sorted.slice(0,30);
+    const tmMax=Math.max(1,...tm.map(x=>x[1]));
+    document.getElementById('treemap').innerHTML=tm.map(([n,v])=>{
+      const a=Math.min(1,v/tmMax);
+      return `<div title="${Util.esc(n)}" style="grid-column:span ${1+Math.round(a*2)};background:linear-gradient(135deg,rgba(11,94,215,${(.35+a*.5).toFixed(2)}),rgba(14,165,233,${(.35+a*.5).toFixed(2)}));color:#fff;padding:6px;border-radius:8px;font-size:11px;display:flex;flex-direction:column;justify-content:space-between;gap:4px;word-break:break-word"><div style="white-space:normal;line-height:1.25">${Util.esc(n)}</div><div class="font-bold">${Util.fmt(v)}</div></div>`;
+    }).join('');
+  },
+  _palette(n){const base=['#0b5ed7','#0ea5e9','#10b981','#f59e0b','#ef4444','#8b5cf6','#ec4899','#14b8a6','#f97316','#6366f1'];const out=[];for(let i=0;i<n;i++)out.push(base[i%base.length]);return out;},
+  _chart(id,type,data,opts={}){
+    if(this.charts[id]) this.charts[id].destroy();
+    const ctx=document.getElementById(id).getContext('2d');
+    this.charts[id]=new Chart(ctx,{type,data,options:Object.assign({responsive:true,maintainAspectRatio:false,plugins:{legend:{display:type!=='bar',position:'bottom',labels:{boxWidth:10,font:{size:10}}}},scales:(type==='bar'||type==='line')?{x:{ticks:{font:{size:10},maxRotation:45,minRotation:0}},y:{ticks:{font:{size:10}},beginAtZero:true}}:undefined},opts)});
+  }
+};
+
+// ---------------------- Export Engine ------------------------------
+const Exporter = {
+  currentModel(){ return Report.build(); },
+  excel(){
+    const m=this.currentModel(); if(!m) return;
+    const meta=getReportFilterMeta();
+    const aoa=[];
+    aoa.push(['PCTS & HMIS MONITORING SYSTEM — Medical & Health Department']);
+    aoa.push([m.def.title]);
+    if(meta){
+      aoa.push([`District: ${meta.district}`, `Block: ${meta.block}`, `Sector: ${meta.sector}`, `Facility/SC: ${meta.facility}`]);
+      aoa.push([`Fin. Year: ${meta.fy}`, `Month(s): ${meta.months}`, `Indicator: ${meta.indicator}`]);
+    }
+    aoa.push([]);
+    aoa.push([m.rowLabel, ...m.months, 'Grand Total']);
+    for(const r of m.rows) aoa.push([r.label, ...m.months.map(x=>r.cells[x]||0), r.total]);
+    aoa.push(['Grand Total', ...m.months.map(x=>m.total.cells[x]||0), m.total.total]);
+    const ws=XLSX.utils.aoa_to_sheet(aoa);
+    ws['!merges']=[{s:{r:0,c:0},e:{r:0,c:m.months.length+1}},{s:{r:1,c:0},e:{r:1,c:m.months.length+1}}];
+    ws['!cols']=[{wch:45},...m.months.map(()=>({wch:12})),{wch:15}];
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Report');
+    XLSX.writeFile(wb,`HMIS_${m.def.title.replace(/\s+/g,'_')}.xlsx`);
+  },
+  async pdf(){
+    const m=this.currentModel(); if(!m) return;
+    const meta=getReportFilterMeta();
+    const {jsPDF}=window.jspdf;
+    
+    const isLandscape = m.months.length > 3 || true;
+    const doc=new jsPDF({orientation: isLandscape ? 'landscape' : 'portrait', unit:'pt', format:'a4'});
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    
+    doc.setFillColor(11, 94, 215);
+    doc.rect(0, 0, pageWidth, 42, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(13); doc.setFont(undefined, 'bold');
+    doc.text('PCTS & HMIS MONITORING SYSTEM', 30, 22);
+    doc.setFontSize(8.5); doc.setFont(undefined, 'normal');
+    doc.text('Medical & Health Department — BCMHO, Banera (Bhilwara)', 30, 34);
+    
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(11.5); doc.setFont(undefined, 'bold');
+    doc.text(m.def.title, 30, 60);
+    
+    if(meta){
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(30, 68, pageWidth - 60, 52, 4, 4, 'FD');
+      
+      doc.setFontSize(8); doc.setTextColor(30, 41, 59);
+      
+      const c1 = 38, c2 = pageWidth * 0.28, c3 = pageWidth * 0.54, c4 = pageWidth * 0.78;
+      
+      doc.setFont(undefined, 'bold'); doc.text('District:', c1, 82);
+      doc.setFont(undefined, 'normal'); doc.text(String(meta.district).slice(0, 24), c1 + 40, 82);
+      
+      doc.setFont(undefined, 'bold'); doc.text('Block:', c2, 82);
+      doc.setFont(undefined, 'normal'); doc.text(String(meta.block).slice(0, 24), c2 + 32, 82);
+      
+      doc.setFont(undefined, 'bold'); doc.text('Sector:', c3, 82);
+      doc.setFont(undefined, 'normal'); doc.text(String(meta.sector).slice(0, 24), c3 + 34, 82);
+      
+      doc.setFont(undefined, 'bold'); doc.text('Fin. Year:', c4, 82);
+      doc.setFont(undefined, 'normal'); doc.text(String(meta.fy), c4 + 44, 82);
+      
+      doc.setFont(undefined, 'bold'); doc.text('Facility/SC:', c1, 96);
+      doc.setFont(undefined, 'normal'); doc.text(String(meta.facility).slice(0, 32), c1 + 54, 96);
+
+      doc.setFont(undefined, 'bold'); doc.text('Month(s):', c3, 96);
+      doc.setFont(undefined, 'normal'); doc.text(String(meta.months).slice(0, 30), c3 + 42, 96);
+      
+      doc.setFont(undefined, 'bold'); doc.text('Indicator:', c1, 110);
+      doc.setFont(undefined, 'normal'); doc.text(String(meta.indicator).slice(0, 100), c1 + 48, 110);
+    }
+    
+    doc.autoTable({
+      startY: meta ? 128 : 75,
+      head: [[m.rowLabel, ...m.months, 'Grand Total']],
+      body: m.rows.map(r=>[r.label, ...m.months.map(x=>Util.fmt(r.cells[x])), Util.fmt(r.total)]),
+      foot: [['Grand Total', ...m.months.map(x=>Util.fmt(m.total.cells[x])), Util.fmt(m.total.total)]],
+      showFoot: 'lastPage',
+      theme: 'grid',
+      styles: { fontSize: 7.5, cellPadding: 4, overflow: 'linebreak', lineColor: [203, 213, 225], lineWidth: 0.5, textColor: [30, 41, 59] },
+      headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', halign: 'center', lineColor: [29, 78, 216], lineWidth: 0.5 },
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', lineColor: [203, 213, 225], lineWidth: 0.5 },
+      columnStyles: {
+        0: { cellWidth: isLandscape ? 200 : 150, halign: 'left' },
+        ...m.months.reduce((acc,_,idx)=>({...acc, [idx+1]:{halign:'right'}}),{}),
+        [m.months.length+1]: { halign: 'right', fontStyle: 'bold' }
+      },
+      margin: { left: 30, right: 30, top: 40, bottom: 30 },
+      didDrawPage: (d)=>{
+        doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
+        const footerLeft = `Developed By: RS Solanki, IA` + (meta ? `  |  Generated: ${meta.generatedAt}` : '');
+        doc.text(footerLeft, 30, pageHeight - 12);
+        doc.text(`Page ${doc.internal.getNumberOfPages()}`, pageWidth - 50, pageHeight - 12);
+      }
+    });
+    
+    doc.save(`HMIS_${m.def.title.replace(/\s+/g,'_')}.pdf`);
+  },
+  async bulkFacilityPdf(targetBlock){
+    if(!Store.data){ alert('Please upload an HMIS file first.'); return; }
+    
+    let blk = targetBlock;
+    if(!blk){
+      if(Store.filters.blocks.length === 1){
+        blk = Store.filters.blocks[0];
+      } else {
+        const availableBlocks = [...new Set(Store.data.records.map(r=>r.block).filter(Boolean))].sort();
+        if(availableBlocks.length === 1){
+          blk = availableBlocks[0];
+        } else if(availableBlocks.length > 1){
+          this.showBulkModal(availableBlocks);
+          return;
+        } else {
+          alert('No blocks found in current data.'); return;
+        }
+      }
+    }
+
+    const recs = Store.data.records.filter(r => r.block === blk);
+    const facilities = [...new Set(recs.map(r => r.facility).filter(Boolean))].sort();
+    if(!facilities.length){
+      alert(`No facilities found for Block: "${blk}"`); return;
+    }
+
+    const statusOverlay = document.createElement('div');
+    statusOverlay.id = 'bulkStatusOverlay';
+    statusOverlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,0.75);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;color:#fff;font-family:sans-serif';
+    statusOverlay.innerHTML = `
+      <div style="background:#fff;color:#0f172a;padding:28px;border-radius:16px;max-width:440px;width:90%;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);text-align:center">
+        <div style="width:48px;height:48px;border:4px solid #2563eb;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px"></div>
+        <h3 style="font-size:18px;font-weight:800;margin:0 0 6px">Exporting Bulk Facility PDFs</h3>
+        <p style="font-size:13px;color:#64748b;margin:0 0 16px">Block: <b>${Util.esc(blk)}</b> (${facilities.length} Facilities)</p>
+        <div style="background:#f1f5f9;border-radius:10px;height:10px;overflow:hidden;margin-bottom:12px">
+          <div id="bulkProgressBar" style="background:#2563eb;height:100%;width:0%;transition:width 0.2s"></div>
+        </div>
+        <div id="bulkProgressMsg" style="font-size:12px;font-weight:600;color:#334155">Preparing generation...</div>
+      </div>
+    `;
+    document.body.appendChild(statusOverlay);
+
+    await new Promise(r => setTimeout(r, 100));
+
+    const { jsPDF } = window.jspdf;
+    const hasZip = typeof JSZip !== 'undefined';
+    const zip = hasZip ? new JSZip() : null;
+
+    const fFilters = Store.filters;
+    const months = FilterEngine.distinctMonths(recs);
+    const inds = fFilters.indicators.length ? Store.data.indicators.filter(i=>fFilters.indicators.includes(i.code)) : Store.data.indicators;
+
+    for(let i=0; i<facilities.length; i++){
+      const facName = facilities[i];
+      const pMsg = document.getElementById('bulkProgressMsg');
+      const pBar = document.getElementById('bulkProgressBar');
+      if(pMsg) pMsg.textContent = `[${i+1}/${facilities.length}] ${facName}`;
+      if(pBar) pBar.style.width = `${Math.round(((i+1)/facilities.length)*100)}%`;
+      await new Promise(r => setTimeout(r, 20));
+
+      const facRecs = recs.filter(r => r.facility === facName && (!fFilters.fy || r.fy === fFilters.fy) && (!fFilters.months.length || fFilters.months.includes(r.month)));
+      
+      const rows = inds.map(ind => {
+        const cells = {}; let gt = 0;
+        for(const m of months) cells[m] = 0;
+        for(const r of facRecs){
+          const v = r.values[ind.code]; if(v == null) continue;
+          cells[r.month] = (cells[r.month] || 0) + v; gt += v;
+        }
+        return { label: `${ind.code} — ${ind.name}`, code: ind.code, cells, total: gt };
+      });
+
+      const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+
+      doc.setFillColor(11, 94, 215); doc.rect(0, 0, pageWidth, 42, 'F');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(13); doc.setFont(undefined, 'bold');
+      doc.text('PCTS & HMIS MONITORING SYSTEM', 30, 22);
+      doc.setFontSize(8.5); doc.setFont(undefined, 'normal');
+      doc.text('Medical & Health Department — BCMHO, Banera (Bhilwara)', 30, 34);
+
+      doc.setTextColor(15, 23, 42);
+      doc.setFontSize(11.5); doc.setFont(undefined, 'bold');
+      doc.text(`Facility Compile Report — ${facName}`, 30, 60);
+
+      doc.setFillColor(248, 250, 252); doc.setDrawColor(203, 213, 225);
+      doc.roundedRect(30, 68, pageWidth - 60, 52, 4, 4, 'FD');
+
+      const dist = facRecs[0]?.district || Store.data.records[0]?.district || '';
+      const c1 = 38, c2 = pageWidth * 0.28, c3 = pageWidth * 0.54, c4 = pageWidth * 0.78;
+
+      doc.setFontSize(8); doc.setTextColor(30, 41, 59);
+      doc.setFont(undefined, 'bold'); doc.text('District:', c1, 82);
+      doc.setFont(undefined, 'normal'); doc.text(String(dist).slice(0, 24), c1 + 40, 82);
+
+      doc.setFont(undefined, 'bold'); doc.text('Block:', c2, 82);
+      doc.setFont(undefined, 'normal'); doc.text(String(blk).slice(0, 24), c2 + 32, 82);
+
+      doc.setFont(undefined, 'bold'); doc.text('Sector:', c3, 82);
+      doc.setFont(undefined, 'normal'); doc.text(facRecs[0]?.sector || 'All', c3 + 34, 82);
+
+      doc.setFont(undefined, 'bold'); doc.text('Fin. Year:', c4, 82);
+      doc.setFont(undefined, 'normal'); doc.text(String(fFilters.fy || 'All'), c4 + 44, 82);
+
+      doc.setFont(undefined, 'bold'); doc.text('Facility/SC:', c1, 96);
+      doc.setFont(undefined, 'normal'); doc.text(String(facName).slice(0, 35), c1 + 54, 96);
+
+      doc.setFont(undefined, 'bold'); doc.text('Month(s):', c3, 96);
+      doc.setFont(undefined, 'normal'); doc.text(String(months.join(', ')).slice(0, 30), c3 + 42, 96);
+
+      const totCells = {}; let totAll = 0;
+      for(const m of months){ let s=0; for(const r of rows) s+=(r.cells[m]||0); totCells[m]=s; totAll+=s; }
+
+      doc.autoTable({
+        startY: 128,
+        head: [['Indicator / Item', ...months, 'Grand Total']],
+        body: rows.map(r=>[r.label, ...months.map(x=>Util.fmt(r.cells[x])), Util.fmt(r.total)]),
+        foot: [['Grand Total', ...months.map(x=>Util.fmt(totCells[x])), Util.fmt(totAll)]],
+        showFoot: 'lastPage',
+        theme: 'grid',
+        styles: { fontSize: 7.5, cellPadding: 4, overflow: 'linebreak', lineColor: [203, 213, 225], lineWidth: 0.5, textColor: [30, 41, 59] },
+        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', halign: 'center', lineColor: [29, 78, 216], lineWidth: 0.5 },
+        footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', lineColor: [203, 213, 225], lineWidth: 0.5 },
+        columnStyles: {
+          0: { cellWidth: 200, halign: 'left' },
+          ...months.reduce((acc,_,idx)=>({...acc, [idx+1]:{halign:'right'}}),{}),
+          [months.length+1]: { halign: 'right', fontStyle: 'bold' }
+        },
+        margin: { left: 30, right: 30, top: 40, bottom: 30 },
+        didDrawPage: (d)=>{
+          doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
+          const genDate = new Date().toLocaleDateString('en-IN');
+          doc.text(`Developed By: RS Solanki, IA  |  Generated: ${genDate}`, 30, pageHeight - 12);
+          doc.text(`Page ${doc.internal.getNumberOfPages()}`, pageWidth - 50, pageHeight - 12);
+        }
+      });
+
+      const safeName = `${blk}_${facName}`.replace(/[/\\?%*:|"<>]/g, '_').replace(/\s+/g, '_');
+      if(zip){
+        const pdfBlob = doc.output('blob');
+        zip.file(`${safeName}.pdf`, pdfBlob);
+      } else {
+        doc.save(`${safeName}.pdf`);
+      }
+    }
+
+    if(zip){
+      const pMsg = document.getElementById('bulkProgressMsg');
+      if(pMsg) pMsg.textContent = 'Zipping files...';
+      const content = await zip.generateAsync({type: "blob"});
+      Util.download(content, `HMIS_Bulk_Facility_PDFs_${blk.replace(/\s+/g,'_')}.zip`);
+    }
+
+    if(statusOverlay.parentNode) statusOverlay.parentNode.removeChild(statusOverlay);
+  },
+  showBulkModal(blocks){
+    const old = document.getElementById('bulkBlockModal');
+    if(old) old.remove();
+    const html = `
+      <div id="bulkBlockModal" style="position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,0.6);backdrop-filter:blur(3px);display:flex;align-items:center;justify-content:center;padding:16px;font-family:sans-serif">
+        <div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:24px;box-shadow:0 20px 40px rgba(0,0,0,0.2)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <h3 style="font-size:16px;font-weight:800;color:#0f172a;margin:0">📦 Bulk Facility PDF Export</h3>
+            <button onclick="document.getElementById('bulkBlockModal').remove()" style="border:none;background:none;font-size:18px;cursor:pointer;color:#64748b">&times;</button>
+          </div>
+          <p style="font-size:13px;color:#64748b;margin:0 0 16px;line-height:1.4">Select the Block to export individual PDFs for all its facilities in bulk:</p>
+          <select id="bulkBlockSel" style="width:100%;padding:10px 12px;border:1.5px solid #cbd5e1;border-radius:8px;font-size:14px;font-weight:600;color:#0f172a;margin-bottom:16px">
+            ${blocks.map(b => `<option value="${Util.esc(b)}">${Util.esc(b)}</option>`).join('')}
+          </select>
+          <div style="display:flex;gap:10px">
+            <button onclick="document.getElementById('bulkBlockModal').remove()" style="flex:1;padding:10px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;font-weight:600;color:#475569;cursor:pointer">Cancel</button>
+            <button id="bulkConfirmBtn" style="flex:1;padding:10px;border:none;border-radius:8px;background:#2563eb;color:#fff;font-weight:700;cursor:pointer">Export All PDFs</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', html);
+    document.getElementById('bulkConfirmBtn').onclick = () => {
+      const selBlock = document.getElementById('bulkBlockSel').value;
+      document.getElementById('bulkBlockModal').remove();
+      Exporter.bulkFacilityPdf(selBlock);
+    };
+  },
+  print(){
+    Report.render();
+    setTimeout(()=>{
+      window.print();
+    }, 100);
+  },
+  async jpg(){
+    const node=document.getElementById('reportHost');
+    const canvas=await html2canvas(node,{scale:2,backgroundColor:'#ffffff',width:1920,windowWidth:1920});
+    canvas.toBlob(b=>Util.download(b,'HMIS_Report.jpg'),'image/jpeg',0.95);
+  }
+};
+
+// ---------------------- Search Engine (Global) ---------------------
+const SearchEngine = {
+  init(){
+    const inp=document.getElementById('globalSearch'), panel=document.getElementById('searchPanel');
+    const render=Util.debounce(()=>{
+      const q=inp.value.trim();
+      if(!q||!Store.data){panel.classList.add('hidden');return;}
+      const hits=IndicatorEngine.search(q).slice(0,30);
+      panel.innerHTML=hits.map((h,idx)=>`<div class="search-item flex items-start gap-2" data-code="${h.code}" data-idx="${idx}">
+          <div class="flex-1" style="word-break:break-word;line-height:1.4"><span class="code-tag">${h.code}</span>${h.name}<div class="text-[10px] text-[color:var(--muted)] mt-0.5">${h.sectionName||''}</div></div>
+          <span class="expand-ind mt-0.5" data-idx="${idx}" title="Full view">⤢</span>
+        </div>`).join('') || '<div class="p-3 text-xs text-[color:var(--muted)]">No matches</div>';
+      panel.classList.remove('hidden');
+      panel.querySelectorAll('.expand-ind').forEach(ic=>{
+        ic.addEventListener('click',e=>{
+          e.stopPropagation();
+          const h=hits[+ic.dataset.idx];
+          IndicatorModal.open(h.code,h.name,h.sectionName);
+        });
+      });
+      panel.querySelectorAll('.search-item').forEach(el=>el.onclick=()=>{
+        setView('reports');
+        FilterEngine.choices.fIndicator.removeActiveItems();
+        FilterEngine.choices.fIndicator.setChoiceByValue(el.dataset.code);
+        FilterEngine.readFilters(); Report.render();
+        panel.classList.add('hidden'); inp.value='';
+      });
+    },150);
+    inp.addEventListener('input',render);
+    inp.addEventListener('blur',()=>setTimeout(()=>panel.classList.add('hidden'),250));
+    document.addEventListener('click',(e)=>{ if(!inp.contains(e.target)&&!panel.contains(e.target)) panel.classList.add('hidden'); });
+    inp.addEventListener('focus',render);
+  }
+};
+
+// ---------------------- Indicators list view -----------------------
+function renderIndicatorList(q=''){
+  const host=document.getElementById('indList'); if(!Store.data){host.innerHTML='';document.getElementById('indCount').textContent='';return;}
+  const list = q?IndicatorEngine.search(q):Store.data.indicators;
+  document.getElementById('indCount').textContent = `${list.length} of ${Store.data.indicators.length} indicators`;
+  host.innerHTML = list.slice(0,500).map((i,idx)=>`
+    <div class="p-3 rounded-xl border border-[var(--border)]" style="background:var(--panel2)">
+      <div class="flex items-center gap-2"><span class="code-tag">${i.code}</span><span class="text-[11px] text-[color:var(--muted)]">${i.sectionName||''}</span>
+        <span class="expand-ind ml-auto" data-idx="${idx}" title="Full view">⤢</span></div>
+      <div class="text-sm font-medium mt-1" style="line-height:1.4;word-break:break-word">${i.name}</div>
+    </div>`).join('');
+  host.querySelectorAll('.expand-ind').forEach(ic=>{
+    ic.addEventListener('click',e=>{
+      e.stopPropagation();
+      const i=list[+ic.dataset.idx];
+      IndicatorModal.open(i.code, i.name, i.sectionName);
+    });
+  });
+}
+
+// ---------------------- Indicator Full-Name Modal -------------------
+const IndicatorModal = {
+  init(){
+    document.getElementById('indModalClose').onclick=()=>this.close();
+    document.getElementById('indModalOverlay').addEventListener('click',e=>{ if(e.target.id==='indModalOverlay') this.close(); });
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape') this.close(); });
+    document.getElementById('indModalCopy').onclick=()=>{
+      const txt=document.getElementById('indModalName').textContent;
+      navigator.clipboard?.writeText(txt).then(()=>{
+        const b=document.getElementById('indModalCopy'); const old=b.textContent;
+        b.textContent='✅ Copied!'; setTimeout(()=>b.textContent=old,1200);
+      }).catch(()=>{});
+    };
+  },
+  open(code,name,section){
+    document.getElementById('indModalCode').textContent=code||'';
+    document.getElementById('indModalName').textContent=name||'';
+    document.getElementById('indModalSection').textContent=section?('Section: '+section):'';
+    const ov=document.getElementById('indModalOverlay');
+    ov.classList.remove('hidden'); ov.style.display='flex';
+  },
+  close(){
+    const ov=document.getElementById('indModalOverlay');
+    ov.classList.add('hidden'); ov.style.display='none';
+  }
+};
+
+// ---------------------- Theme Engine -------------------------------
+const ThemeEngine = {
+  init(){
+    const sel=document.getElementById('themeSel');
+    const saved=localStorage.getItem('hmisTheme')||'pro';
+    document.body.dataset.theme=saved; sel.value=saved;
+    sel.addEventListener('change',()=>{document.body.dataset.theme=sel.value;localStorage.setItem('hmisTheme',sel.value);Dashboard.render();});
+  }
+};
+
+// ---------------------- Role-based access control -------------------
+function currentRole(){ return sessionStorage.getItem('hmis_role') || 'user'; }
+function applyRoleUI(){
+  const role = currentRole();
+  const isAdmin = role==='admin';
+  const uploadNav = document.querySelector('#nav .nav-item[data-view="upload"]');
+  if(uploadNav) uploadNav.style.display = isAdmin ? '' : 'none';
+  const dashUploadBtn = document.querySelector('#dashEmpty button');
+  if(dashUploadBtn){
+    if(isAdmin){ dashUploadBtn.style.display=''; }
+    else { dashUploadBtn.style.display='none'; }
+  }
+  const badge = document.getElementById('userRoleBadge');
+  if(badge) badge.textContent = isAdmin ? 'Admin' : 'User';
+}
+function logout(){
+  sessionStorage.removeItem('hmis_auth');
+  sessionStorage.removeItem('hmis_role');
+  document.documentElement.classList.remove('authed');
+  if(!document.getElementById('loginGate')){
+    showLogin();
+  }
+}
+
+// ---------------------- View router --------------------------------
+function setView(v){
+  if(v==='upload' && currentRole()!=='admin') v='dashboard';
+  document.querySelectorAll('.view').forEach(el=>el.classList.add('hidden'));
+  const el=document.getElementById('view-'+v); if(el) el.classList.remove('hidden');
+  document.querySelectorAll('#nav .nav-item').forEach(n=>n.classList.toggle('active',n.dataset.view===v));
+  const titles={dashboard:'Executive Dashboard',upload:'Upload HMIS Data',reports:'Reports & Analytics',indicators:'Indicators Catalogue',about:'About'};
+  document.getElementById('viewTitle').textContent=titles[v]||'';
+  if(v==='dashboard') Dashboard.render();
+  if(v==='indicators') renderIndicatorList(document.getElementById('indSearch').value);
+  if(v==='reports') Report.render();
+}
+
+function setReportType(r){
+  Store.currentReport = +r;
+  Store.page = 1;
+  Store.sort = {col:null, dir:1};
+  
+  const sel1 = document.getElementById('reportSelect');
+  if(sel1) sel1.value = String(r);
+  const sel2 = document.getElementById('fReportType');
+  if(sel2) sel2.value = String(r);
+
+  document.querySelectorAll('#quickReportPillGroup button').forEach(btn=>{
+    if(+btn.dataset.r === +r){
+      btn.classList.add('bg-blue-600','text-white','active-pill');
+      btn.classList.remove('text-slate-600','hover:bg-white');
+    } else {
+      btn.classList.remove('bg-blue-600','text-white','active-pill');
+      btn.classList.add('text-slate-600','hover:bg-white');
+    }
+  });
+
+  Report.render();
+}
+
+// ---------------------- Bindings & Bootstrap -----------------------
+function bindReportControls(){
+  const sel1 = document.getElementById('reportSelect');
+  if(sel1) sel1.addEventListener('change', e=>setReportType(e.target.value));
+
+  const sel2 = document.getElementById('fReportType');
+  if(sel2) sel2.addEventListener('change', e=>setReportType(e.target.value));
+
+  document.querySelectorAll('#quickReportPillGroup button').forEach(btn=>{
+    btn.onclick = () => setReportType(btn.dataset.r);
+  });
+
+  document.getElementById('tableSearch').addEventListener('input',Util.debounce(e=>{Store.tableQuery=e.target.value;Store.page=1;Report.render();},200));
+  document.getElementById('pageSize').addEventListener('change',e=>{Store.pageSize=+e.target.value;Store.page=1;Report.render();});
+  document.getElementById('indSearch').addEventListener('input',Util.debounce(e=>renderIndicatorList(e.target.value),150));
+  document.querySelectorAll('#nav .nav-item').forEach(n=>n.onclick=()=>setView(n.dataset.view));
+}
+
+function bindUpload(){
+  const drop=document.getElementById('drop'), file=document.getElementById('file');
+  drop.addEventListener('click',()=>file.click());
+  ['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('drag');}));
+  ['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('drag');}));
+  drop.addEventListener('drop',ev=>{if(ev.dataTransfer.files[0]) handleFile(ev.dataTransfer.files[0]);});
+  file.addEventListener('change',e=>{if(e.target.files[0]) handleFile(e.target.files[0]);});
+}
+async function handleFile(f){
+  const meta=document.getElementById('fileMeta'), status=document.getElementById('loadStatus'), msg=document.getElementById('loadMsg');
+  meta.classList.remove('hidden'); meta.innerHTML=`<b>${f.name}</b> · ${(f.size/1024/1024).toFixed(2)} MB`;
+  status.classList.remove('hidden'); msg.textContent='Reading workbook…';
+  try{
+    await new Promise(r=>setTimeout(r,50));
+    const data=await ExcelEngine.parse(f);
+    msg.textContent='Building indicator index…'; await new Promise(r=>setTimeout(r,20));
+    Store.set(data);
+    IndicatorEngine.build(data.indicators);
+    FilterEngine.init();
+    status.classList.add('hidden');
+    meta.innerHTML += `<div class="mt-2 text-xs text-[color:var(--muted)]">✅ Parsed ${Util.fmt(data.records.length)} records · ${data.indicators.length} indicators · ${FilterEngine.distinctMonths(data.records).length} months.</div>`;
+    setView('dashboard');
+  }catch(err){console.error(err);status.innerHTML='<span class="text-red-600">Failed to parse file: '+err.message+'</span>';}
+}
+
+function toggleSidebar(force){
+  const a=document.querySelector('aside.sidebar'), o=document.getElementById('drawerOverlay');
+  const willOpen = force===undefined ? !a.classList.contains('open') : force;
+  if(willOpen){ a.classList.remove('hidden'); a.classList.add('open'); o.classList.add('open'); }
+  else { a.classList.remove('open'); if(window.innerWidth<768) a.classList.add('hidden'); o.classList.remove('open'); }
+}
+
+function extractSheetInfo(u){
+  if(!u) return null;
+  u = u.trim();
+  const pubM = u.match(/\/spreadsheets\/d\/e\/([A-Za-z0-9_-]+)\/pub/);
+  if(pubM) return {published:true, base:u.split('?')[0], id:pubM[1], gid:(u.match(/[#&?]gid=(\d+)/)||[])[1]||''};
+  const m = u.match(/\/spreadsheets\/d\/([A-Za-z0-9_-]+)/);
+  if(m) return {published:false, id:m[1], gid:(u.match(/[#&?]gid=(\d+)/)||[])[1]||'0'};
+  if(/^[A-Za-z0-9_-]{20,}$/.test(u)) return {published:false, id:u, gid:'0'};
+  return null;
+}
+async function tryFetch(url, kind){
+  const res = await fetch(url, {mode:'cors', redirect:'follow', credentials:'omit'});
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const ct = (res.headers.get('content-type')||'').toLowerCase();
+  if(ct.includes('text/html')) throw new Error('Sheet not public. Share as "Anyone with the link — Viewer".');
+  return kind==='binary' ? await res.arrayBuffer() : await res.text();
+}
+async function loadFromGoogleSheet(url){
+  const status=document.getElementById('loadStatus'), msg=document.getElementById('loadMsg'), meta=document.getElementById('fileMeta');
+  const info = extractSheetInfo(url);
+  if(!info){ alert('Invalid Google Sheet URL / ID'); return; }
+  meta.classList.remove('hidden');
+  meta.innerHTML = info.published ? `<b>Google Sheet (Published):</b> ${info.id}` : `<b>Google Sheet:</b> ${info.id} (gid ${info.gid||'0'})`;
+  status.classList.remove('hidden'); msg.textContent = 'Fetching from Google Sheets…';
+
+  const attempts = [];
+  if(info.published){
+    const csvUrl = info.base.includes('output=csv') ? info.base : `${info.base}?output=csv${info.gid?('&gid='+info.gid):''}&single=true`;
+    attempts.push({label:'published CSV', url:csvUrl, kind:'text', parseKind:'csv'});
+  }
+  attempts.push(
+    {label:'xlsx export', url:`https://docs.google.com/spreadsheets/d/${info.id}/export?format=xlsx&gid=${info.gid||'0'}`, kind:'binary', parseKind:undefined},
+    {label:'csv export',  url:`https://docs.google.com/spreadsheets/d/${info.id}/export?format=csv&gid=${info.gid||'0'}`,  kind:'text',   parseKind:'csv'},
+    {label:'gviz csv',    url:`https://docs.google.com/spreadsheets/d/${info.id}/gviz/tq?tqx=out:csv&gid=${info.gid||'0'}`, kind:'text',   parseKind:'csv'},
+    {label:'proxy csv (fallback)', url:`https://api.allorigins.win/raw?url=${encodeURIComponent(`https://docs.google.com/spreadsheets/d/${info.id}/export?format=csv&gid=${info.gid||'0'}`)}`, kind:'text', parseKind:'csv'}
+  );
+
+  const errors=[];
+  for(const a of attempts){
+    try{
+      msg.textContent = `Fetching (${a.label})…`;
+      const payload = await tryFetch(a.url, a.kind);
+      msg.textContent='Parsing workbook…';
+      const data = await ExcelEngine.parseBuffer(payload, a.parseKind);
+      if(!data.records.length) throw new Error('No data rows found in sheet');
+      msg.textContent='Building indicator index…';
+      Store.set(data);
+      IndicatorEngine.build(data.indicators);
+      FilterEngine.init();
+      status.classList.add('hidden');
+      meta.innerHTML += `<div class="mt-2 text-xs text-[color:var(--muted)]">✅ Loaded ${Util.fmt(data.records.length)} records · ${data.indicators.length} indicators · ${FilterEngine.distinctMonths(data.records).length} months via ${a.label}.</div>`;
+      setView('dashboard');
+      return;
+    }catch(err){
+      console.warn('GSheet attempt failed:', a.label, err);
+      errors.push(`${a.label}: ${err.message}`);
+    }
+  }
+  status.innerHTML = `<div class="text-red-600"><b>Failed to load Google Sheet.</b><br/>Attempts:<br/>• ${errors.join('<br/>• ')}</div>`;
+}
+
+const DEFAULT_GS_URL = 'https://docs.google.com/spreadsheets/d/1WXe9vB_kvfoiyOfmaaaJI3KnKmUIKYx-s89HwxqyFIU/edit?gid=1529769453#gid=1529769453';
+
+function bindGoogleSheet(){
+  const btn=document.getElementById('gsLoadBtn'), save=document.getElementById('gsSaveBtn'), inp=document.getElementById('gsUrl');
+  const saved = localStorage.getItem('hmis_gs_url');
+  inp.value = saved || DEFAULT_GS_URL;
+  btn.onclick = ()=> loadFromGoogleSheet(inp.value);
+  save.onclick = ()=> { localStorage.setItem('hmis_gs_url', inp.value.trim()); save.textContent='✅ Saved'; setTimeout(()=>save.textContent='💾 Save',1500); };
+  inp.addEventListener('keydown', e=>{ if(e.key==='Enter') loadFromGoogleSheet(inp.value); });
+}
+
+// ---------------- Login Gate ----------------
+const USERS = {
+  'Raj':  { pass:'Raj#333',  role:'admin' },
+  'bhilwara': { pass:'Hmis@2026', role:'user'  },
+};
+function showLogin(){
+  const html = `
+  <div id="loginGate" style="position:fixed;inset:0;z-index:9999;background:linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);display:flex;align-items:center;justify-content:center;padding:20px;font-family:'Inter',system-ui,-apple-system,sans-serif;overflow-y:auto">
+    <div style="background:#ffffff;border-radius:24px;box-shadow:0 25px 70px -12px rgba(15,23,42,0.18);max-width:1040px;width:100%;min-height:600px;display:flex;flex-wrap:wrap;overflow:hidden;border:1px solid rgba(226,232,240,0.8)">
+      
+      <!-- LEFT SIDE: FORM AREA -->
+      <div style="flex:1;min-width:320px;padding:48px 44px;display:flex;flex-direction:column;justify-content:between;background:#ffffff">
+        <div>
+          <!-- BRAND / LOGO -->
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:28px">
+            <div style="width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,#0256e8,#1d4ed8);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:20px;box-shadow:0 8px 16px -4px rgba(2,86,232,0.35)">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+            </div>
+            <div>
+              <div style="font-weight:800;font-size:18px;color:#0f172a;letter-spacing:-0.3px;line-height:1.2">PCTS &amp; HMIS</div>
+              <div style="font-size:11px;font-weight:600;color:#2563eb;letter-spacing:0.5px;text-transform:uppercase">Monitoring System</div>
+            </div>
+          </div>
+
+          <!-- HEADINGS -->
+          <h1 style="font-size:24px;font-weight:800;color:#0f172a;margin:0 0 6px 0;letter-spacing:-0.4px">Log in to your Account</h1>
+          <p style="font-size:13px;color:#64748b;margin:0 0 24px 0;line-height:1.4">Welcome back! Please enter your credentials to access the platform:</p>
+
+          <!-- LOGIN FORM -->
+          <form id="loginForm" style="display:flex;flex-direction:column;gap:16px">
+            <div>
+              <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:6px">User ID</label>
+              <div style="position:relative">
+                <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#94a3b8">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                </span>
+                <input id="lgUser" autocomplete="username" required placeholder="Enter User ID (e.g. bhilwara)" style="width:100%;padding:12px 14px 12px 42px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;background:#f8fafc;outline:none;transition:all 0.2s;box-sizing:border-box" onfocus="this.style.borderColor='#2563eb';this.style.background='#fff'" onblur="this.style.borderColor='#e2e8f0';this.style.background='#f8fafc'"/>
+              </div>
+            </div>
+
+            <div>
+              <label style="display:block;font-size:12px;font-weight:700;color:#334155;margin-bottom:6px">Password</label>
+              <div style="position:relative">
+                <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#94a3b8">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                </span>
+                <input id="lgPass" type="password" autocomplete="current-password" required placeholder="••••••••" style="width:100%;padding:12px 42px 12px 42px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;color:#0f172a;background:#f8fafc;outline:none;transition:all 0.2s;box-sizing:border-box" onfocus="this.style.borderColor='#2563eb';this.style.background='#fff'" onblur="this.style.borderColor='#e2e8f0';this.style.background='#f8fafc'"/>
+                <button type="button" id="togglePassBtn" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#94a3b8;padding:0" title="Toggle password visibility">
+                  <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;color:#64748b;margin-top:2px">
+              <label style="display:flex;align-items:center;gap:6px;cursor:pointer;user-select:none">
+                <input type="checkbox" checked style="accent-color:#2563eb;width:15px;height:15px;border-radius:4px"/>
+                <span>Remember me</span>
+              </label>
+            </div>
+
+            <div id="lgErr" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px 12px;border-radius:8px;font-size:12.5px;font-weight:600">
+              ⚠️ Invalid credentials. Please try again.
+            </div>
+
+            <button type="submit" id="lgSubmitBtn" style="margin-top:8px;padding:13px;background:#2563eb;color:#ffffff;border:none;border-radius:10px;font-weight:700;font-size:15px;cursor:pointer;box-shadow:0 10px 20px -5px rgba(37,99,235,0.4);transition:all 0.2s" onmouseover="this.style.background='#1d4ed8';this.style.transform='translateY(-1px)'" onmouseout="this.style.background='#2563eb';this.style.transform='none'">
+              Log in
+            </button>
+          </form>
+        </div>
+
+        <div style="margin-top:24px;text-align:center;font-size:11.5px;color:#94a3b8">
+          🔒 Enterprise Government Platform • Authorized Use Only
+        </div>
+      </div>
+
+      <!-- RIGHT SIDE: STYLISH BLUE BANNER WITH DETAILS & ILLUSTRATION -->
+      <div style="flex:1;min-width:320px;background:linear-gradient(135deg, #0256e8 0%, #1d4ed8 60%, #1e40af 100%);color:#ffffff;padding:44px 40px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden">
+        
+        <!-- CIRCULAR BACKGROUND GRAPHICS MATCHING SCREENSHOT -->
+        <div style="position:absolute;inset:0;pointer-events:none;opacity:0.18">
+          <svg width="100%" height="100%" viewBox="0 0 500 500" preserveAspectRatio="xMidYMid slice">
+            <circle cx="250" cy="220" r="180" fill="none" stroke="#ffffff" stroke-width="2" stroke-dasharray="6 6"/>
+            <circle cx="250" cy="220" r="130" fill="none" stroke="#ffffff" stroke-width="1.5"/>
+            <circle cx="250" cy="220" r="80" stroke="#ffffff" stroke-width="1" fill="rgba(255,255,255,0.05)"/>
+          </svg>
+        </div>
+
+        <!-- TOP FLOATING BADGES SHOWCASE -->
+        <div style="position:relative;z-index:2">
+          <div style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:rgba(255,255,255,0.15);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.25);border-radius:20px;font-size:11px;font-weight:700;letter-spacing:0.5px;text-transform:uppercase;color:#ffffff;margin-bottom:20px">
+            <span style="width:7px;height:7px;border-radius:50%;background:#4ade80"></span>
+            Version 1.1.0 • Live Online
+          </div>
+
+          <h2 style="font-size:22px;font-weight:800;color:#ffffff;line-height:1.3;margin:0 0 8px 0;letter-spacing:-0.3px">
+            PCTS &amp; HMIS Monitoring System
+          </h2>
+          <p style="font-size:13px;color:rgba(255,255,255,0.85);margin:0 0 20px 0;font-weight:500;line-height:1.4">
+            Office of Block Chief Medical &amp; Health Officer, Banera (Bhilwara)
+          </p>
+
+          <!-- SLIDE CAROUSEL / INFO CARDS -->
+          <div id="heroCardContainer" style="background:rgba(255,255,255,0.12);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.2);border-radius:18px;padding:20px;box-shadow:0 12px 30px rgba(0,0,0,0.15);transition:all 0.3s">
+            
+            <!-- SLIDE 1: DETAILS -->
+            <div id="slide1" class="hero-slide">
+              <div style="font-size:11px;font-weight:700;color:#93c5fd;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🏛️ Government MIS Platform</div>
+              <p style="font-size:12.5px;line-height:1.55;color:rgba(255,255,255,0.95);margin:0 0 14px 0">
+                Enterprise Government MIS Platform for HMIS monthly monitoring &amp; reporting.
+              </p>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.15);font-size:12px">
+                <div>
+                  <div style="color:rgba(255,255,255,0.65);font-size:10px;text-transform:uppercase;font-weight:700">Developed By</div>
+                  <div style="font-weight:700;color:#ffffff;margin-top:2px">RS Solanki, IA</div>
+                </div>
+                <div>
+                  <div style="color:rgba(255,255,255,0.65);font-size:10px;text-transform:uppercase;font-weight:700">Department</div>
+                  <div style="font-weight:700;color:#ffffff;margin-top:2px">Medical &amp; Health</div>
+                </div>
+                <div>
+                  <div style="color:rgba(255,255,255,0.65);font-size:10px;text-transform:uppercase;font-weight:700">Office</div>
+                  <div style="font-weight:700;color:#ffffff;margin-top:2px">BCMHO, Banera</div>
+                </div>
+                <div>
+                  <div style="color:rgba(255,255,255,0.65);font-size:10px;text-transform:uppercase;font-weight:700">System Version</div>
+                  <div style="font-weight:700;color:#ffffff;margin-top:2px">1.1.0</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- SLIDE 2: CAPABILITIES -->
+            <div id="slide2" class="hero-slide" style="display:none">
+              <div style="font-size:11px;font-weight:700;color:#93c5fd;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">⚡ Automated Processing</div>
+              <p style="font-size:12px;line-height:1.6;color:rgba(255,255,255,0.92);margin:0">
+                The tool automatically parses any HMIS export, remaps indicators, and produces District / Block / Sector / Facility / Indicator compile reports with dynamic filters, print-friendly formatting, and detailed PDF exports. All processing runs locally in the browser.
+              </p>
+            </div>
+
+            <!-- SLIDE 3: SECURITY & SPEED -->
+            <div id="slide3" class="hero-slide" style="display:none">
+              <div style="font-size:11px;font-weight:700;color:#93c5fd;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px">🔒 100% In-Browser Privacy</div>
+              <p style="font-size:12px;line-height:1.6;color:rgba(255,255,255,0.92);margin:0">
+                Zero server latency or data leakage. All data operations, indicator mappings, multi-level aggregations, and high-resolution PDF report renders run securely client-side in your web browser.
+              </p>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- CAROUSEL DOTS & FOOTER -->
+        <div style="position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;margin-top:20px">
+          <div style="font-size:12px;font-weight:600;color:rgba(255,255,255,0.9)">
+            Connect with every report in 1 click.
+          </div>
+
+          <!-- INTERACTIVE PAGINATION DOTS -->
+          <div style="display:flex;gap:6px" id="slideDots">
+            <span class="dot active" data-s="1" style="width:24px;height:8px;border-radius:4px;background:#ffffff;cursor:pointer;transition:all 0.3s"></span>
+            <span class="dot" data-s="2" style="width:8px;height:8px;border-radius:4px;background:rgba(255,255,255,0.4);cursor:pointer;transition:all 0.3s"></span>
+            <span class="dot" data-s="3" style="width:8px;height:8px;border-radius:4px;background:rgba(255,255,255,0.4);cursor:pointer;transition:all 0.3s"></span>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>`;
+
+  document.body.insertAdjacentHTML('beforeend', html);
+
+  // Toggle Password Visibility
+  const passInp = document.getElementById('lgPass');
+  const toggleBtn = document.getElementById('togglePassBtn');
+  const eyeIcon = document.getElementById('eyeIcon');
+  toggleBtn.addEventListener('click', ()=>{
+    if(passInp.type === 'password'){
+      passInp.type = 'text';
+      eyeIcon.innerHTML = `<path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/>`;
+    } else {
+      passInp.type = 'password';
+      eyeIcon.innerHTML = `<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>`;
+    }
+  });
+
+  // Carousel Switcher
+  let currentSlide = 1;
+  function switchSlide(n){
+    currentSlide = n;
+    [1, 2, 3].forEach(i => {
+      const s = document.getElementById('slide' + i);
+      if(s) s.style.display = i === n ? 'block' : 'none';
+    });
+    document.querySelectorAll('#slideDots .dot').forEach(d => {
+      if(+d.dataset.s === n){
+        d.style.width = '24px';
+        d.style.background = '#ffffff';
+      } else {
+        d.style.width = '8px';
+        d.style.background = 'rgba(255,255,255,0.4)';
+      }
+    });
+  }
+
+  document.querySelectorAll('#slideDots .dot').forEach(d => {
+    d.onclick = () => switchSlide(+d.dataset.s);
+  });
+
+  // Auto cycle slides every 5s
+  const slideTimer = setInterval(() => {
+    switchSlide(currentSlide % 3 + 1);
+  }, 5000);
+
+  // Form Submit Handler
+  document.getElementById('loginForm').addEventListener('submit', e=>{
+    e.preventDefault();
+    const u=document.getElementById('lgUser').value.trim();
+    const p=document.getElementById('lgPass').value;
+    const rec = USERS[u];
+    if(rec && p===rec.pass){
+      clearInterval(slideTimer);
+      sessionStorage.setItem('hmis_auth','1');
+      sessionStorage.setItem('hmis_role', rec.role);
+      document.documentElement.classList.add('authed');
+      document.getElementById('loginGate').remove();
+      initApp();
+    } else {
+      document.getElementById('lgErr').style.display='block';
+    }
+  });
+
+  setTimeout(()=>document.getElementById('lgUser').focus(),50);
+}
+function initApp(){
+  ThemeEngine.init(); bindUpload(); bindGoogleSheet(); bindReportControls(); SearchEngine.init(); IndicatorModal.init();
+  applyRoleUI();
+  setView('dashboard');
+  const urlToLoad = localStorage.getItem('hmis_gs_url') || DEFAULT_GS_URL;
+  if(urlToLoad){ setTimeout(()=>loadFromGoogleSheet(urlToLoad), 200); }
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  if(document.documentElement.classList.contains('authed')){ initApp(); }
+  else { showLogin(); }
+});
+</script>
+</body>
+</html>
