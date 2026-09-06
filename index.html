@@ -1132,8 +1132,8 @@ const Exporter = {
       footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', lineColor: [203, 213, 225], lineWidth: 0.5 },
       columnStyles: {
         0: { cellWidth: isLandscape ? 200 : 150, halign: 'left' },
-        ...m.months.reduce((acc,_,idx)=>({...acc, [idx+1]:{halign:'right'}}),{}),
-        [m.months.length+1]: { halign: 'right', fontStyle: 'bold' }
+        ...m.months.reduce((acc,_,idx)=>({...acc, [idx+1]:{halign:'center'}}),{}),
+        [m.months.length+1]: { halign: 'center', fontStyle: 'bold' }
       },
       margin: { left: 30, right: 30, top: 40, bottom: 30 },
       didDrawPage: (d)=>{
@@ -1273,8 +1273,8 @@ const Exporter = {
         footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', lineColor: [203, 213, 225], lineWidth: 0.5 },
         columnStyles: {
           0: { cellWidth: 200, halign: 'left' },
-          ...months.reduce((acc,_,idx)=>({...acc, [idx+1]:{halign:'right'}}),{}),
-          [months.length+1]: { halign: 'right', fontStyle: 'bold' }
+          ...months.reduce((acc,_,idx)=>({...acc, [idx+1]:{halign:'center'}}),{}),
+          [months.length+1]: { halign: 'center', fontStyle: 'bold' }
         },
         margin: { left: 30, right: 30, top: 40, bottom: 30 },
         didDrawPage: (d)=>{
