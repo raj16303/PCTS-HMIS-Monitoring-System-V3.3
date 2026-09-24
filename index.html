@@ -1475,60 +1475,136 @@ const Exporter = {
     const meta=getReportFilterMeta();
     const {jsPDF}=window.jspdf;
     
-    const isLandscape = m.months.length > 3 || true;
-    const doc=new jsPDF({orientation: isLandscape ? 'landscape' : 'portrait', unit:'pt', format:'a4'});
+    // Always use landscape for multi-month HMIS tabular report
+    const doc=new jsPDF({orientation: 'landscape', unit:'pt', format:'a4'});
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
+    const marginX = 20;
+    const usableWidth = pageWidth - (2 * marginX); // 801.89 pt
     
+    // Top Brand Bar
     doc.setFillColor(11, 94, 215);
-    doc.rect(0, 0, pageWidth, 42, 'F');
+    doc.rect(0, 0, pageWidth, 38, 'F');
     
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(13); doc.setFont(undefined, 'bold');
-    doc.text('PCTS & HMIS MONITORING SYSTEM', 30, 22);
-    doc.setFontSize(8.5); doc.setFont(undefined, 'normal');
-    doc.text('Medical & Health Department — BCMHO, Banera (Bhilwara)', 30, 34);
-    
-    doc.setTextColor(15, 23, 42);
-    doc.setFontSize(11.5); doc.setFont(undefined, 'bold');
-    doc.text(m.def.title, 30, 60);
+    doc.setFontSize(12.5); doc.setFont(undefined, 'bold');
+    doc.text('PCTS & HMIS MONITORING SYSTEM', marginX, 18);
+    doc.setFontSize(8); doc.setFont(undefined, 'normal');
+    doc.text('Medical & Health Department — BCMHO, Banera (Bhilwara)', marginX, 29);
     
     if(meta){
-      doc.setFillColor(248, 250, 252);
-      doc.setDrawColor(203, 213, 225);
-      doc.roundedRect(30, 68, pageWidth - 60, 52, 4, 4, 'FD');
-      
-      doc.setFontSize(8); doc.setTextColor(30, 41, 59);
-      
-      const c1 = 38, c2 = pageWidth * 0.28, c3 = pageWidth * 0.54, c4 = pageWidth * 0.78;
-      
-      doc.setFont(undefined, 'bold'); doc.text('District:', c1, 82);
-      doc.setFont(undefined, 'normal'); doc.text(String(meta.district).slice(0, 24), c1 + 40, 82);
-      
-      doc.setFont(undefined, 'bold'); doc.text('Block:', c2, 82);
-      doc.setFont(undefined, 'normal'); doc.text(String(meta.block).slice(0, 24), c2 + 32, 82);
-      
-      doc.setFont(undefined, 'bold'); doc.text('Sector:', c3, 82);
-      doc.setFont(undefined, 'normal'); doc.text(String(meta.sector).slice(0, 24), c3 + 34, 82);
-      
-      doc.setFont(undefined, 'bold'); doc.text('Fin. Year:', c4, 82);
-      doc.setFont(undefined, 'normal'); doc.text(String(meta.fy), c4 + 44, 82);
-      
-      doc.setFont(undefined, 'bold'); doc.text('Facility/SC:', c1, 96);
-      doc.setFont(undefined, 'normal'); doc.text(String(meta.facility).slice(0, 32), c1 + 54, 96);
+      doc.setFontSize(7.5); doc.setFont(undefined, 'normal');
+      doc.text(`Generated: ${meta.generatedAt}`, pageWidth - marginX, 23, { align: 'right' });
+    }
 
-      doc.setFont(undefined, 'bold'); doc.text('Month(s):', c3, 96);
-      doc.setFont(undefined, 'normal'); doc.text(String(meta.months).slice(0, 30), c3 + 42, 96);
+    // Report Title
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(10.5); doc.setFont(undefined, 'bold');
+    doc.text(m.def.title, marginX, 51);
+    
+    // Determine Indicator Name
+    let indTitle = '';
+    if(m.focus){
+      indTitle = m.focus.code ? `${m.focus.code} — ${m.focus.name}` : m.focus.name;
+    } else if(meta && meta.indicator){
+      indTitle = meta.indicator;
+    }
+    indTitle = (indTitle || '').trim();
+
+    let curY = 56;
+    
+    // Prominent Indicator Box (Bada Indicator Name on 1st Page)
+    if(indTitle){
+      doc.setFontSize(11.5);
+      doc.setFont(undefined, 'bold');
+      const maxTextWidth = usableWidth - 110;
+      const indLines = doc.splitTextToSize(indTitle, maxTextWidth);
+      const indBoxHeight = Math.max(26, 12 + (indLines.length * 13));
       
-      doc.setFont(undefined, 'bold'); doc.text('Indicator:', c1, 110);
-      doc.setFont(undefined, 'normal'); doc.text(String(meta.indicator).slice(0, 100), c1 + 48, 110);
+      // Box background and border
+      doc.setFillColor(239, 246, 255);
+      doc.setDrawColor(191, 219, 254);
+      doc.setLineWidth(1);
+      doc.roundedRect(marginX, curY, usableWidth, indBoxHeight, 4, 4, 'FD');
+      
+      // Left blue accent stripe
+      doc.setFillColor(37, 99, 235);
+      doc.rect(marginX, curY, 4.5, indBoxHeight, 'F');
+      
+      // Label "INDICATOR:"
+      doc.setFontSize(9);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(29, 78, 216);
+      doc.text('INDICATOR:', marginX + 12, curY + (indLines.length > 1 ? 16 : 17));
+      
+      // Big Indicator Name
+      doc.setFontSize(11.5);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(15, 23, 42);
+      doc.text(indLines, marginX + 88, curY + 16);
+      
+      curY += indBoxHeight + 6;
     }
     
+    // Metadata Box (District, Block, Sector, FY, Months, Facilities)
+    if(meta){
+      const metaBoxHeight = 30;
+      doc.setFillColor(248, 250, 252);
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.75);
+      doc.roundedRect(marginX, curY, usableWidth, metaBoxHeight, 3, 3, 'FD');
+      
+      doc.setFontSize(7.5);
+      doc.setTextColor(51, 65, 85);
+      
+      const c1 = marginX + 8;
+      const c2 = marginX + usableWidth * 0.26;
+      const c3 = marginX + usableWidth * 0.52;
+      const c4 = marginX + usableWidth * 0.77;
+      
+      const row1Y = curY + 12;
+      const row2Y = curY + 23;
+      
+      doc.setFont(undefined, 'bold'); doc.text('District:', c1, row1Y);
+      doc.setFont(undefined, 'normal'); doc.text(String(meta.district).slice(0, 22), c1 + 36, row1Y);
+      
+      doc.setFont(undefined, 'bold'); doc.text('Block:', c2, row1Y);
+      doc.setFont(undefined, 'normal'); doc.text(String(meta.block).slice(0, 24), c2 + 28, row1Y);
+      
+      doc.setFont(undefined, 'bold'); doc.text('Sector:', c3, row1Y);
+      doc.setFont(undefined, 'normal'); doc.text(String(meta.sector).slice(0, 26), c3 + 32, row1Y);
+      
+      doc.setFont(undefined, 'bold'); doc.text('Fin. Year:', c4, row1Y);
+      doc.setFont(undefined, 'normal'); doc.text(String(meta.fy), c4 + 40, row1Y);
+      
+      doc.setFont(undefined, 'bold'); doc.text('Facility/SC:', c1, row2Y);
+      doc.setFont(undefined, 'normal'); doc.text(String(meta.facility).slice(0, 32), c1 + 48, row2Y);
+
+      doc.setFont(undefined, 'bold'); doc.text('Month(s):', c3, row2Y);
+      doc.setFont(undefined, 'normal'); doc.text(String(meta.months).slice(0, 40), c3 + 40, row2Y);
+      
+      curY += metaBoxHeight + 8;
+    } else {
+      curY += 6;
+    }
+    
+    const numMonths = m.months.length;
     let headRow, bodyRows, footRow, colStyles;
     let numLabelCols = 1;
+    let tableFontSize = 7.5;
+    let cellPad = { top: 3.5, right: 2.5, bottom: 3.5, left: 2.5 };
+
+    if(numMonths >= 10){
+      tableFontSize = 6.5;
+      cellPad = { top: 2.5, right: 1.5, bottom: 2.5, left: 1.5 };
+    } else if(numMonths >= 6){
+      tableFontSize = 7.0;
+      cellPad = { top: 3, right: 2, bottom: 3, left: 2 };
+    }
+
     if(m.hasHierarchy && m.hierarchyCols && m.hierarchyCols.length === 3){
       numLabelCols = 3;
-      headRow = ['Block', 'Sector', 'Facility / Subcenter', ...m.months, 'Grand Total'];
+      headRow = ['Block', 'Sector', 'Facility / Subcenter', ...m.months, 'Grand\nTotal'];
       bodyRows = m.rows.map(r => [
         r.block || '',
         r.sector || '',
@@ -1541,16 +1617,41 @@ const Exporter = {
         ...m.months.map(x => ({ content: Util.fmt(m.total.cells[x]), styles: { halign: 'center', fontStyle: 'bold' } })),
         { content: Util.fmt(m.total.total), styles: { halign: 'center', fontStyle: 'bold' } }
       ];
+
+      let mWidth, gtWidth, bWidth, sWidth, fWidth;
+      if(numMonths >= 10){
+        mWidth = 38;
+        gtWidth = 46;
+        bWidth = 65;
+        sWidth = 75;
+        fWidth = Math.max(80, usableWidth - (numMonths * mWidth) - gtWidth - bWidth - sWidth);
+      } else if(numMonths >= 6){
+        mWidth = 44;
+        gtWidth = 52;
+        bWidth = 75;
+        sWidth = 85;
+        fWidth = Math.max(100, usableWidth - (numMonths * mWidth) - gtWidth - bWidth - sWidth);
+      } else {
+        mWidth = 55;
+        gtWidth = 65;
+        bWidth = 85;
+        sWidth = 95;
+        fWidth = Math.max(120, usableWidth - (numMonths * mWidth) - gtWidth - bWidth - sWidth);
+      }
+
       colStyles = {
-        0: { cellWidth: 70, halign: 'left' },
-        1: { cellWidth: 75, halign: 'left' },
-        2: { cellWidth: 120, halign: 'left' },
-        ...m.months.reduce((acc,_,idx)=>({...acc, [idx+3]:{halign:'center'}}),{}),
-        [m.months.length+3]: { halign: 'center', fontStyle: 'bold' }
+        0: { cellWidth: bWidth, halign: 'left' },
+        1: { cellWidth: sWidth, halign: 'left' },
+        2: { cellWidth: fWidth, halign: 'left' },
+        ...m.months.reduce((acc,_,idx)=>({
+          ...acc,
+          [idx+3]: { cellWidth: mWidth, halign: 'center' }
+        }), {}),
+        [m.months.length+3]: { cellWidth: gtWidth, halign: 'center', fontStyle: 'bold' }
       };
     } else if(m.hasHierarchy && m.hierarchyCols && m.hierarchyCols.length === 2){
       numLabelCols = 2;
-      headRow = ['Block', 'Sector', ...m.months, 'Grand Total'];
+      headRow = ['Block', 'Sector', ...m.months, 'Grand\nTotal'];
       bodyRows = m.rows.map(r => [
         r.block || '',
         r.sector || r.label,
@@ -1562,40 +1663,106 @@ const Exporter = {
         ...m.months.map(x => ({ content: Util.fmt(m.total.cells[x]), styles: { halign: 'center', fontStyle: 'bold' } })),
         { content: Util.fmt(m.total.total), styles: { halign: 'center', fontStyle: 'bold' } }
       ];
+
+      let mWidth, gtWidth, bWidth, sWidth;
+      if(numMonths >= 10){
+        mWidth = 42;
+        gtWidth = 50;
+        bWidth = 90;
+        sWidth = Math.max(100, usableWidth - (numMonths * mWidth) - gtWidth - bWidth);
+      } else if(numMonths >= 6){
+        mWidth = 48;
+        gtWidth = 56;
+        bWidth = 100;
+        sWidth = Math.max(120, usableWidth - (numMonths * mWidth) - gtWidth - bWidth);
+      } else {
+        mWidth = 60;
+        gtWidth = 70;
+        bWidth = 120;
+        sWidth = Math.max(140, usableWidth - (numMonths * mWidth) - gtWidth - bWidth);
+      }
+
       colStyles = {
-        0: { cellWidth: 90, halign: 'left' },
-        1: { cellWidth: 110, halign: 'left' },
-        ...m.months.reduce((acc,_,idx)=>({...acc, [idx+2]:{halign:'center'}}),{}),
-        [m.months.length+2]: { halign: 'center', fontStyle: 'bold' }
+        0: { cellWidth: bWidth, halign: 'left' },
+        1: { cellWidth: sWidth, halign: 'left' },
+        ...m.months.reduce((acc,_,idx)=>({
+          ...acc,
+          [idx+2]: { cellWidth: mWidth, halign: 'center' }
+        }), {}),
+        [m.months.length+2]: { cellWidth: gtWidth, halign: 'center', fontStyle: 'bold' }
       };
     } else {
       numLabelCols = 1;
-      headRow = [m.rowLabel, ...m.months, 'Grand Total'];
+      headRow = [m.rowLabel, ...m.months, 'Grand\nTotal'];
       bodyRows = m.rows.map(r=>[r.label, ...m.months.map(x=>Util.fmt(r.cells[x])), Util.fmt(r.total)]);
       footRow = [
         { content: 'Grand Total', styles: { halign: 'center', fontStyle: 'bold' } },
         ...m.months.map(x => ({ content: Util.fmt(m.total.cells[x]), styles: { halign: 'center', fontStyle: 'bold' } })),
         { content: Util.fmt(m.total.total), styles: { halign: 'center', fontStyle: 'bold' } }
       ];
+
+      let mWidth, gtWidth, labelWidth;
+      if(numMonths >= 10){
+        mWidth = 42;
+        gtWidth = 50;
+        labelWidth = Math.max(120, usableWidth - (numMonths * mWidth) - gtWidth);
+      } else if(numMonths >= 6){
+        mWidth = 48;
+        gtWidth = 56;
+        labelWidth = Math.max(140, usableWidth - (numMonths * mWidth) - gtWidth);
+      } else {
+        mWidth = 60;
+        gtWidth = 70;
+        labelWidth = Math.max(160, usableWidth - (numMonths * mWidth) - gtWidth);
+      }
+
       colStyles = {
-        0: { cellWidth: isLandscape ? 200 : 150, halign: 'left' },
-        ...m.months.reduce((acc,_,idx)=>({...acc, [idx+1]:{halign:'center'}}),{}),
-        [m.months.length+1]: { halign: 'center', fontStyle: 'bold' }
+        0: { cellWidth: labelWidth, halign: 'left' },
+        ...m.months.reduce((acc,_,idx)=>({
+          ...acc,
+          [idx+1]: { cellWidth: mWidth, halign: 'center' }
+        }), {}),
+        [m.months.length+1]: { cellWidth: gtWidth, halign: 'center', fontStyle: 'bold' }
       };
     }
 
     const lastColIdx = numLabelCols + m.months.length;
 
     doc.autoTable({
-      startY: meta ? 128 : 75,
+      startY: curY,
+      tableWidth: usableWidth,
+      horizontalPageBreak: false,
       head: [headRow],
       body: bodyRows,
       foot: [footRow],
       showFoot: 'lastPage',
       theme: 'grid',
-      styles: { fontSize: 7.5, cellPadding: 4, overflow: 'linebreak', lineColor: [203, 213, 225], lineWidth: 0.5, textColor: [30, 41, 59] },
-      headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', halign: 'center', lineColor: [29, 78, 216], lineWidth: 0.5 },
-      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'center', lineColor: [203, 213, 225], lineWidth: 0.5 },
+      styles: {
+        fontSize: tableFontSize,
+        cellPadding: cellPad,
+        overflow: 'linebreak',
+        lineColor: [203, 213, 225],
+        lineWidth: 0.5,
+        textColor: [30, 41, 59]
+      },
+      headStyles: {
+        fillColor: [37, 99, 235],
+        textColor: 255,
+        fontStyle: 'bold',
+        halign: 'center',
+        lineColor: [29, 78, 216],
+        lineWidth: 0.5,
+        fontSize: tableFontSize
+      },
+      footStyles: {
+        fillColor: [241, 245, 249],
+        textColor: [15, 23, 42],
+        fontStyle: 'bold',
+        halign: 'center',
+        lineColor: [203, 213, 225],
+        lineWidth: 0.5,
+        fontSize: tableFontSize
+      },
       columnStyles: colStyles,
       didParseCell: (data) => {
         // Style subtotal rows in body
@@ -1626,12 +1793,16 @@ const Exporter = {
           data.cell.styles.fontStyle = 'bold';
         }
       },
-      margin: { left: 30, right: 30, top: 40, bottom: 30 },
+      margin: { left: marginX, right: marginX, top: 35, bottom: 25 },
       didDrawPage: (d)=>{
+        if (d.pageNumber > 1) {
+          doc.setFontSize(8); doc.setTextColor(71, 85, 105); doc.setFont(undefined, 'normal');
+          doc.text(`HMIS Monitoring System  |  ${m.def.title}` + (indTitle ? ` — ${indTitle.slice(0, 80)}` : ''), marginX, 22);
+        }
         doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
         const footerLeft = `Developed By: RS Solanki, IA` + (meta ? `  |  Generated: ${meta.generatedAt}` : '');
-        doc.text(footerLeft, 30, pageHeight - 12);
-        doc.text(`Page ${doc.internal.getNumberOfPages()}`, pageWidth - 50, pageHeight - 12);
+        doc.text(footerLeft, marginX, pageHeight - 12);
+        doc.text(`Page ${doc.internal.getNumberOfPages()}`, pageWidth - 45, pageHeight - 12);
       }
     });
     
@@ -1712,42 +1883,54 @@ const Exporter = {
       const doc = new jsPDF({ orientation: 'landscape', unit: 'pt', format: 'a4' });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
+      const marginX = 20;
+      const usableWidth = pageWidth - (2 * marginX);
 
-      doc.setFillColor(11, 94, 215); doc.rect(0, 0, pageWidth, 42, 'F');
+      doc.setFillColor(11, 94, 215); doc.rect(0, 0, pageWidth, 38, 'F');
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(13); doc.setFont(undefined, 'bold');
-      doc.text('PCTS & HMIS MONITORING SYSTEM', 30, 22);
-      doc.setFontSize(8.5); doc.setFont(undefined, 'normal');
-      doc.text('Medical & Health Department — BCMHO, Banera (Bhilwara)', 30, 34);
+      doc.setFontSize(12.5); doc.setFont(undefined, 'bold');
+      doc.text('PCTS & HMIS MONITORING SYSTEM', marginX, 18);
+      doc.setFontSize(8); doc.setFont(undefined, 'normal');
+      doc.text('Medical & Health Department — BCMHO, Banera (Bhilwara)', marginX, 29);
 
       doc.setTextColor(15, 23, 42);
-      doc.setFontSize(11.5); doc.setFont(undefined, 'bold');
-      doc.text(`Facility Compile Report — ${facName}`, 30, 60);
+      doc.setFontSize(10.5); doc.setFont(undefined, 'bold');
+      doc.text(`Facility Compile Report — ${facName}`, marginX, 51);
 
-      doc.setFillColor(248, 250, 252); doc.setDrawColor(203, 213, 225);
-      doc.roundedRect(30, 68, pageWidth - 60, 52, 4, 4, 'FD');
+      // Prominent Facility Box on 1st Page
+      const facBoxHeight = 28;
+      doc.setFillColor(239, 246, 255);
+      doc.setDrawColor(191, 219, 254);
+      doc.setLineWidth(1);
+      doc.roundedRect(marginX, 56, usableWidth, facBoxHeight, 4, 4, 'FD');
+      doc.setFillColor(37, 99, 235);
+      doc.rect(marginX, 56, 4.5, facBoxHeight, 'F');
+
+      doc.setFontSize(9); doc.setFont(undefined, 'bold'); doc.setTextColor(29, 78, 216);
+      doc.text('FACILITY / SUBCENTER:', marginX + 12, 73);
+      doc.setFontSize(12); doc.setFont(undefined, 'bold'); doc.setTextColor(15, 23, 42);
+      doc.text(String(facName), marginX + 145, 73);
+
+      const metaBoxY = 90;
+      const metaBoxHeight = 28;
+      doc.setFillColor(248, 250, 252); doc.setDrawColor(226, 232, 240); doc.setLineWidth(0.75);
+      doc.roundedRect(marginX, metaBoxY, usableWidth, metaBoxHeight, 3, 3, 'FD');
 
       const dist = facRecs[0]?.district || Store.data.records[0]?.district || '';
-      const c1 = 38, c2 = pageWidth * 0.28, c3 = pageWidth * 0.54, c4 = pageWidth * 0.78;
+      const c1 = marginX + 8, c2 = marginX + usableWidth * 0.26, c3 = marginX + usableWidth * 0.52, c4 = marginX + usableWidth * 0.77;
 
-      doc.setFontSize(8); doc.setTextColor(30, 41, 59);
-      doc.setFont(undefined, 'bold'); doc.text('District:', c1, 82);
-      doc.setFont(undefined, 'normal'); doc.text(String(dist).slice(0, 24), c1 + 40, 82);
+      doc.setFontSize(7.5); doc.setTextColor(51, 65, 85);
+      doc.setFont(undefined, 'bold'); doc.text('District:', c1, metaBoxY + 17);
+      doc.setFont(undefined, 'normal'); doc.text(String(dist).slice(0, 22), c1 + 36, metaBoxY + 17);
 
-      doc.setFont(undefined, 'bold'); doc.text('Block:', c2, 82);
-      doc.setFont(undefined, 'normal'); doc.text(String(blk).slice(0, 24), c2 + 32, 82);
+      doc.setFont(undefined, 'bold'); doc.text('Block:', c2, metaBoxY + 17);
+      doc.setFont(undefined, 'normal'); doc.text(String(blk).slice(0, 24), c2 + 28, metaBoxY + 17);
 
-      doc.setFont(undefined, 'bold'); doc.text('Sector:', c3, 82);
-      doc.setFont(undefined, 'normal'); doc.text(facRecs[0]?.sector || 'All', c3 + 34, 82);
+      doc.setFont(undefined, 'bold'); doc.text('Sector:', c3, metaBoxY + 17);
+      doc.setFont(undefined, 'normal'); doc.text(facRecs[0]?.sector || 'All', c3 + 32, metaBoxY + 17);
 
-      doc.setFont(undefined, 'bold'); doc.text('Fin. Year:', c4, 82);
-      doc.setFont(undefined, 'normal'); doc.text(String(fFilters.fy || 'All'), c4 + 44, 82);
-
-      doc.setFont(undefined, 'bold'); doc.text('Facility/SC:', c1, 96);
-      doc.setFont(undefined, 'normal'); doc.text(String(facName).slice(0, 35), c1 + 54, 96);
-
-      doc.setFont(undefined, 'bold'); doc.text('Month(s):', c3, 96);
-      doc.setFont(undefined, 'normal'); doc.text(String(months.join(', ')).slice(0, 30), c3 + 42, 96);
+      doc.setFont(undefined, 'bold'); doc.text('Fin. Year:', c4, metaBoxY + 17);
+      doc.setFont(undefined, 'normal'); doc.text(String(fFilters.fy || 'All'), c4 + 40, metaBoxY + 17);
 
       const totCells = {}; let totAll = 0;
       for(const m of months){ let s=0; for(const r of rows) s+=(r.cells[m]||0); totCells[m]=s; totAll+=s; }
@@ -1758,21 +1941,77 @@ const Exporter = {
         { content: Util.fmt(totAll), styles: { halign: 'center', fontStyle: 'bold' } }
       ];
 
+      const numMonths = months.length;
+      let tableFontSize = 7.5;
+      let cellPad = { top: 3.5, right: 2.5, bottom: 3.5, left: 2.5 };
+      if(numMonths >= 10){
+        tableFontSize = 6.5;
+        cellPad = { top: 2.5, right: 1.5, bottom: 2.5, left: 1.5 };
+      } else if(numMonths >= 6){
+        tableFontSize = 7.0;
+        cellPad = { top: 3, right: 2, bottom: 3, left: 2 };
+      }
+
+      let mWidth, gtWidth, labelWidth;
+      if(numMonths >= 10){
+        mWidth = 42;
+        gtWidth = 50;
+        labelWidth = Math.max(120, usableWidth - (numMonths * mWidth) - gtWidth);
+      } else if(numMonths >= 6){
+        mWidth = 48;
+        gtWidth = 56;
+        labelWidth = Math.max(140, usableWidth - (numMonths * mWidth) - gtWidth);
+      } else {
+        mWidth = 60;
+        gtWidth = 70;
+        labelWidth = Math.max(160, usableWidth - (numMonths * mWidth) - gtWidth);
+      }
+
+      const bulkColStyles = {
+        0: { cellWidth: labelWidth, halign: 'left' },
+        ...months.reduce((acc,_,idx)=>({
+          ...acc,
+          [idx+1]: { cellWidth: mWidth, halign: 'center' }
+        }), {}),
+        [months.length+1]: { cellWidth: gtWidth, halign: 'center', fontStyle: 'bold' }
+      };
+
       doc.autoTable({
-        startY: 128,
-        head: [['Indicator / Item', ...months, 'Grand Total']],
+        startY: metaBoxY + metaBoxHeight + 8,
+        tableWidth: usableWidth,
+        horizontalPageBreak: false,
+        head: [['Indicator / Item', ...months, 'Grand\nTotal']],
         body: rows.map(r=>[r.label, ...months.map(x=>Util.fmt(r.cells[x])), Util.fmt(r.total)]),
         foot: [bulkFootRow],
         showFoot: 'lastPage',
         theme: 'grid',
-        styles: { fontSize: 7.5, cellPadding: 4, overflow: 'linebreak', lineColor: [203, 213, 225], lineWidth: 0.5, textColor: [30, 41, 59] },
-        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', halign: 'center', lineColor: [29, 78, 216], lineWidth: 0.5 },
-        footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'center', lineColor: [203, 213, 225], lineWidth: 0.5 },
-        columnStyles: {
-          0: { cellWidth: 200, halign: 'left' },
-          ...months.reduce((acc,_,idx)=>({...acc, [idx+1]:{halign:'center'}}),{}),
-          [months.length+1]: { halign: 'center', fontStyle: 'bold' }
+        styles: {
+          fontSize: tableFontSize,
+          cellPadding: cellPad,
+          overflow: 'linebreak',
+          lineColor: [203, 213, 225],
+          lineWidth: 0.5,
+          textColor: [30, 41, 59]
         },
+        headStyles: {
+          fillColor: [37, 99, 235],
+          textColor: 255,
+          fontStyle: 'bold',
+          halign: 'center',
+          lineColor: [29, 78, 216],
+          lineWidth: 0.5,
+          fontSize: tableFontSize
+        },
+        footStyles: {
+          fillColor: [241, 245, 249],
+          textColor: [15, 23, 42],
+          fontStyle: 'bold',
+          halign: 'center',
+          lineColor: [203, 213, 225],
+          lineWidth: 0.5,
+          fontSize: tableFontSize
+        },
+        columnStyles: bulkColStyles,
         didParseCell: (data) => {
           // Center-align all month columns and Grand Total column across head, body, and foot
           if (data.column.index >= 1) {
@@ -1787,12 +2026,16 @@ const Exporter = {
             data.cell.styles.fontStyle = 'bold';
           }
         },
-        margin: { left: 30, right: 30, top: 40, bottom: 30 },
+        margin: { left: marginX, right: marginX, top: 35, bottom: 25 },
         didDrawPage: (d)=>{
+          if (d.pageNumber > 1) {
+            doc.setFontSize(8); doc.setTextColor(71, 85, 105); doc.setFont(undefined, 'normal');
+            doc.text(`HMIS Monitoring System  |  Facility Compile Report — ${facName}`, marginX, 22);
+          }
           doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
           const genDate = new Date().toLocaleDateString('en-IN');
-          doc.text(`Developed By: RS Solanki, IA  |  Generated: ${genDate}`, 30, pageHeight - 12);
-          doc.text(`Page ${doc.internal.getNumberOfPages()}`, pageWidth - 50, pageHeight - 12);
+          doc.text(`Developed By: RS Solanki, IA  |  Generated: ${genDate}`, marginX, pageHeight - 12);
+          doc.text(`Page ${doc.internal.getNumberOfPages()}`, pageWidth - 45, pageHeight - 12);
         }
       });
 
