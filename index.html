@@ -231,6 +231,12 @@
       white-space: normal !important;
       word-break: break-word !important;
     }
+    table.rtable td.num, table.rtable th.num {
+      text-align: center !important;
+    }
+    table.rtable .grand {
+      text-align: center !important;
+    }
     table.rtable thead th {
       background-color: #e2e8f0 !important;
       font-weight: 700 !important;
@@ -1297,7 +1303,9 @@ const Exporter = {
     }
     
     let headRow, bodyRows, footRow, colStyles;
+    let numLabelCols = 1;
     if(m.hasHierarchy && m.hierarchyCols && m.hierarchyCols.length === 3){
+      numLabelCols = 3;
       headRow = ['Block', 'Sector', 'Facility / Subcenter', ...m.months, 'Grand Total'];
       bodyRows = m.rows.map(r => [
         r.block || '',
@@ -1306,7 +1314,11 @@ const Exporter = {
         ...m.months.map(x => Util.fmt(r.cells[x])),
         Util.fmt(r.total)
       ]);
-      footRow = ['Grand Total', '', '', ...m.months.map(x => Util.fmt(m.total.cells[x])), Util.fmt(m.total.total)];
+      footRow = [
+        { content: 'Grand Total', colSpan: 3, styles: { halign: 'center', fontStyle: 'bold' } },
+        ...m.months.map(x => ({ content: Util.fmt(m.total.cells[x]), styles: { halign: 'center', fontStyle: 'bold' } })),
+        { content: Util.fmt(m.total.total), styles: { halign: 'center', fontStyle: 'bold' } }
+      ];
       colStyles = {
         0: { cellWidth: 70, halign: 'left' },
         1: { cellWidth: 75, halign: 'left' },
@@ -1315,6 +1327,7 @@ const Exporter = {
         [m.months.length+3]: { halign: 'center', fontStyle: 'bold' }
       };
     } else if(m.hasHierarchy && m.hierarchyCols && m.hierarchyCols.length === 2){
+      numLabelCols = 2;
       headRow = ['Block', 'Sector', ...m.months, 'Grand Total'];
       bodyRows = m.rows.map(r => [
         r.block || '',
@@ -1322,7 +1335,11 @@ const Exporter = {
         ...m.months.map(x => Util.fmt(r.cells[x])),
         Util.fmt(r.total)
       ]);
-      footRow = ['Grand Total', '', ...m.months.map(x => Util.fmt(m.total.cells[x])), Util.fmt(m.total.total)];
+      footRow = [
+        { content: 'Grand Total', colSpan: 2, styles: { halign: 'center', fontStyle: 'bold' } },
+        ...m.months.map(x => ({ content: Util.fmt(m.total.cells[x]), styles: { halign: 'center', fontStyle: 'bold' } })),
+        { content: Util.fmt(m.total.total), styles: { halign: 'center', fontStyle: 'bold' } }
+      ];
       colStyles = {
         0: { cellWidth: 90, halign: 'left' },
         1: { cellWidth: 110, halign: 'left' },
@@ -1330,15 +1347,22 @@ const Exporter = {
         [m.months.length+2]: { halign: 'center', fontStyle: 'bold' }
       };
     } else {
+      numLabelCols = 1;
       headRow = [m.rowLabel, ...m.months, 'Grand Total'];
       bodyRows = m.rows.map(r=>[r.label, ...m.months.map(x=>Util.fmt(r.cells[x])), Util.fmt(r.total)]);
-      footRow = ['Grand Total', ...m.months.map(x=>Util.fmt(m.total.cells[x])), Util.fmt(m.total.total)];
+      footRow = [
+        { content: 'Grand Total', styles: { halign: 'center', fontStyle: 'bold' } },
+        ...m.months.map(x => ({ content: Util.fmt(m.total.cells[x]), styles: { halign: 'center', fontStyle: 'bold' } })),
+        { content: Util.fmt(m.total.total), styles: { halign: 'center', fontStyle: 'bold' } }
+      ];
       colStyles = {
         0: { cellWidth: isLandscape ? 200 : 150, halign: 'left' },
         ...m.months.reduce((acc,_,idx)=>({...acc, [idx+1]:{halign:'center'}}),{}),
         [m.months.length+1]: { halign: 'center', fontStyle: 'bold' }
       };
     }
+
+    const lastColIdx = numLabelCols + m.months.length;
 
     doc.autoTable({
       startY: meta ? 128 : 75,
@@ -1349,8 +1373,22 @@ const Exporter = {
       theme: 'grid',
       styles: { fontSize: 7.5, cellPadding: 4, overflow: 'linebreak', lineColor: [203, 213, 225], lineWidth: 0.5, textColor: [30, 41, 59] },
       headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', halign: 'center', lineColor: [29, 78, 216], lineWidth: 0.5 },
-      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', lineColor: [203, 213, 225], lineWidth: 0.5 },
+      footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'center', lineColor: [203, 213, 225], lineWidth: 0.5 },
       columnStyles: colStyles,
+      didParseCell: (data) => {
+        // Center-align all numeric month columns and Grand Total column across head, body, and foot
+        if (data.column.index >= numLabelCols) {
+          data.cell.styles.halign = 'center';
+        }
+        if (data.column.index === lastColIdx) {
+          data.cell.styles.halign = 'center';
+          data.cell.styles.fontStyle = 'bold';
+        }
+        if (data.section === 'foot') {
+          data.cell.styles.halign = 'center';
+          data.cell.styles.fontStyle = 'bold';
+        }
+      },
       margin: { left: 30, right: 30, top: 40, bottom: 30 },
       didDrawPage: (d)=>{
         doc.setFontSize(7.5); doc.setTextColor(100, 116, 139);
@@ -1477,20 +1515,40 @@ const Exporter = {
       const totCells = {}; let totAll = 0;
       for(const m of months){ let s=0; for(const r of rows) s+=(r.cells[m]||0); totCells[m]=s; totAll+=s; }
 
+      const bulkFootRow = [
+        { content: 'Grand Total', styles: { halign: 'center', fontStyle: 'bold' } },
+        ...months.map(x => ({ content: Util.fmt(totCells[x]), styles: { halign: 'center', fontStyle: 'bold' } })),
+        { content: Util.fmt(totAll), styles: { halign: 'center', fontStyle: 'bold' } }
+      ];
+
       doc.autoTable({
         startY: 128,
         head: [['Indicator / Item', ...months, 'Grand Total']],
         body: rows.map(r=>[r.label, ...months.map(x=>Util.fmt(r.cells[x])), Util.fmt(r.total)]),
-        foot: [['Grand Total', ...months.map(x=>Util.fmt(totCells[x])), Util.fmt(totAll)]],
+        foot: [bulkFootRow],
         showFoot: 'lastPage',
         theme: 'grid',
         styles: { fontSize: 7.5, cellPadding: 4, overflow: 'linebreak', lineColor: [203, 213, 225], lineWidth: 0.5, textColor: [30, 41, 59] },
         headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', halign: 'center', lineColor: [29, 78, 216], lineWidth: 0.5 },
-        footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', lineColor: [203, 213, 225], lineWidth: 0.5 },
+        footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'center', lineColor: [203, 213, 225], lineWidth: 0.5 },
         columnStyles: {
           0: { cellWidth: 200, halign: 'left' },
           ...months.reduce((acc,_,idx)=>({...acc, [idx+1]:{halign:'center'}}),{}),
           [months.length+1]: { halign: 'center', fontStyle: 'bold' }
+        },
+        didParseCell: (data) => {
+          // Center-align all month columns and Grand Total column across head, body, and foot
+          if (data.column.index >= 1) {
+            data.cell.styles.halign = 'center';
+          }
+          if (data.column.index === months.length + 1) {
+            data.cell.styles.halign = 'center';
+            data.cell.styles.fontStyle = 'bold';
+          }
+          if (data.section === 'foot') {
+            data.cell.styles.halign = 'center';
+            data.cell.styles.fontStyle = 'bold';
+          }
         },
         margin: { left: 30, right: 30, top: 40, bottom: 30 },
         didDrawPage: (d)=>{
