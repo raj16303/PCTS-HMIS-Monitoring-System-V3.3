@@ -259,6 +259,51 @@
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
+    table.rtable tr.subtotal-sector td {
+      background-color: #f1f5f9 !important;
+      font-weight: 700 !important;
+      color: #000000 !important;
+    }
+    table.rtable tr.subtotal-block td {
+      background-color: #e2e8f0 !important;
+      font-weight: 800 !important;
+      color: #000000 !important;
+    }
+  }
+
+  tr.subtotal-sector td {
+    background-color: #f0f7ff !important;
+    font-weight: 700 !important;
+    color: #1e40af !important;
+    border-top: 1px solid #bfdbfe !important;
+    border-bottom: 1px solid #bfdbfe !important;
+  }
+  tr.subtotal-block td {
+    background-color: #e0e7ff !important;
+    font-weight: 800 !important;
+    color: #312e81 !important;
+    border-top: 2px solid #a5b4fc !important;
+    border-bottom: 2px solid #a5b4fc !important;
+  }
+  body[data-theme="cyber"] tr.subtotal-sector td {
+    background-color: #162447 !important;
+    color: #38bdf8 !important;
+    border-color: #1e3a8a !important;
+  }
+  body[data-theme="cyber"] tr.subtotal-block td {
+    background-color: #1f1d36 !important;
+    color: #c084fc !important;
+    border-color: #4c1d95 !important;
+  }
+  body[data-theme="ai"] tr.subtotal-sector td {
+    background-color: rgba(30, 58, 138, 0.4) !important;
+    color: #93c5fd !important;
+    border-color: rgba(59, 130, 246, 0.3) !important;
+  }
+  body[data-theme="ai"] tr.subtotal-block td {
+    background-color: rgba(88, 28, 135, 0.4) !important;
+    color: #f472b6 !important;
+    border-color: rgba(168, 85, 247, 0.4) !important;
   }
 
   /* Auth gate: hide app shell until authenticated */
@@ -832,6 +877,138 @@ const Report = {
     else { Store.currentReport=1; this.render(); }
     Dashboard.render();
   },
+  buildHierarchicalRows(baseRows, months, hierarchyColsLength, sortCol, sortDir){
+    const sDir = sortDir || 1;
+    if(hierarchyColsLength === 3){
+      // 3-level facility hierarchy: Block -> Sector -> Facility
+      const blockMap = new Map();
+      for(const r of baseRows){
+        const b = r.block || 'Other';
+        if(!blockMap.has(b)) blockMap.set(b, new Map());
+        const secMap = blockMap.get(b);
+        const s = r.sector || 'Other';
+        if(!secMap.has(s)) secMap.set(s, []);
+        secMap.get(s).push(r);
+      }
+      
+      let blocks = [...blockMap.keys()];
+      if(sortCol === '__block'){
+        blocks.sort((a,b) => a.localeCompare(b, undefined, { numeric:true, sensitivity:'base' }) * sDir);
+      }
+      
+      const res = [];
+      for(const bName of blocks){
+        const secMap = blockMap.get(bName);
+        let sectors = [...secMap.keys()];
+        if(sortCol === '__sector'){
+          sectors.sort((a,b) => a.localeCompare(b, undefined, { numeric:true, sensitivity:'base' }) * sDir);
+        }
+        
+        const blockTotalCells = {}; let blockGrandTotal = 0;
+        for(const m of months) blockTotalCells[m] = 0;
+        
+        for(const sName of sectors){
+          let facRows = secMap.get(sName);
+          if(sortCol && sortCol !== '__block' && sortCol !== '__sector'){
+            facRows = facRows.slice().sort((a,b)=>{
+              let va = (sortCol==='__facility'||sortCol==='__label') ? (a.facility||a.label||'') : (sortCol==='__total' ? a.total : (a.cells[sortCol]||0));
+              let vb = (sortCol==='__facility'||sortCol==='__label') ? (b.facility||b.label||'') : (sortCol==='__total' ? b.total : (b.cells[sortCol]||0));
+              if(typeof va==='string' && typeof vb==='string') return va.localeCompare(vb, undefined, {numeric:true, sensitivity:'base'}) * sDir;
+              return ((va < vb) ? -1 : (va > vb) ? 1 : 0) * sDir;
+            });
+          }
+          
+          const secTotalCells = {}; let secGrandTotal = 0;
+          for(const m of months) secTotalCells[m] = 0;
+          
+          for(const fr of facRows){
+            res.push(fr);
+            for(const m of months){
+              secTotalCells[m] += (fr.cells[m] || 0);
+              blockTotalCells[m] += (fr.cells[m] || 0);
+            }
+            secGrandTotal += fr.total;
+            blockGrandTotal += fr.total;
+          }
+          
+          // Sector Subtotal row
+          res.push({
+            block: bName,
+            sector: sName,
+            facility: `Sector ${sName} Total`,
+            label: `Sector ${sName} Total`,
+            code: `SEC_TOT_${sName}`,
+            cells: secTotalCells,
+            total: secGrandTotal,
+            isSubtotal: true,
+            subtotalType: 'sector'
+          });
+        }
+        
+        // Block Subtotal row
+        res.push({
+          block: bName,
+          sector: '',
+          facility: `Block ${bName} Total`,
+          label: `Block ${bName} Total`,
+          code: `BLK_TOT_${bName}`,
+          cells: blockTotalCells,
+          total: blockGrandTotal,
+          isSubtotal: true,
+          subtotalType: 'block'
+        });
+      }
+      return res;
+    } else if(hierarchyColsLength === 2){
+      // 2-level sector hierarchy: Block -> Sector
+      const blockMap = new Map();
+      for(const r of baseRows){
+        const b = r.block || 'Other';
+        if(!blockMap.has(b)) blockMap.set(b, []);
+        blockMap.get(b).push(r);
+      }
+      
+      let blocks = [...blockMap.keys()];
+      if(sortCol === '__block'){
+        blocks.sort((a,b) => a.localeCompare(b, undefined, { numeric:true, sensitivity:'base' }) * sDir);
+      }
+      
+      const res = [];
+      for(const bName of blocks){
+        let secRows = blockMap.get(bName);
+        if(sortCol && sortCol !== '__block'){
+          secRows = secRows.slice().sort((a,b)=>{
+            let va = sortCol === '__sector' ? (a.sector||a.label||'') : (sortCol === '__total' ? a.total : (a.cells[sortCol]||0));
+            let vb = sortCol === '__sector' ? (b.sector||b.label||'') : (sortCol === '__total' ? b.total : (b.cells[sortCol]||0));
+            if(typeof va==='string' && typeof vb==='string') return va.localeCompare(vb, undefined, {numeric:true, sensitivity:'base'}) * sDir;
+            return ((va < vb) ? -1 : (va > vb) ? 1 : 0) * sDir;
+          });
+        }
+        
+        const bCells = {}; let bTotal = 0;
+        for(const m of months) bCells[m] = 0;
+        
+        for(const sr of secRows){
+          res.push(sr);
+          for(const m of months) bCells[m] += (sr.cells[m] || 0);
+          bTotal += sr.total;
+        }
+        
+        res.push({
+          block: bName,
+          sector: `Block ${bName} Total`,
+          label: `Block ${bName} Total`,
+          code: `BLK_TOT_${bName}`,
+          cells: bCells,
+          total: bTotal,
+          isSubtotal: true,
+          subtotalType: 'block'
+        });
+      }
+      return res;
+    }
+    return baseRows;
+  },
   build(){
     if(!Store.data) return null;
     const def=REPORT_DEFS[Store.currentReport];
@@ -875,7 +1052,7 @@ const Report = {
           if(a.sector !== b.sector) return a.sector.localeCompare(b.sector, undefined, { numeric:true, sensitivity:'base' });
           return a.facility.localeCompare(b.facility, undefined, { numeric:true, sensitivity:'base' });
         });
-        const rows = facList.map(item => {
+        const baseRows = facList.map(item => {
           const cells={}; let gt=0;
           for(const m of months) cells[m]=0;
           for(const r of recs){
@@ -890,13 +1067,15 @@ const Report = {
             label: item.facility,
             code: item.facility,
             cells,
-            total: gt
+            total: gt,
+            isSubtotal: false
           };
         });
         const totalCells={}; let totalAll=0;
-        for(const m of months){ let s=0; for(const r of rows) s+=r.cells[m]||0; totalCells[m]=s; totalAll+=s; }
+        for(const m of months){ let s=0; for(const r of baseRows) s+=r.cells[m]||0; totalCells[m]=s; totalAll+=s; }
+        const rows = Report.buildHierarchicalRows(baseRows, months, 3, null, 1);
         return {
-          def, months, rows, total:{cells:totalCells,total:totalAll}, rowLabel:def.rowLabel, focus,
+          def, months, rows, baseRows, total:{cells:totalCells,total:totalAll}, rowLabel:def.rowLabel, focus,
           hasHierarchy: true,
           hierarchyCols: [
             { key: 'block', label: 'Block' },
@@ -920,7 +1099,7 @@ const Report = {
           if(a.block !== b.block) return a.block.localeCompare(b.block, undefined, { numeric:true, sensitivity:'base' });
           return a.sector.localeCompare(b.sector, undefined, { numeric:true, sensitivity:'base' });
         });
-        const rows = secList.map(item => {
+        const baseRows = secList.map(item => {
           const cells={}; let gt=0;
           for(const m of months) cells[m]=0;
           for(const r of recs){
@@ -934,13 +1113,15 @@ const Report = {
             label: item.sector,
             code: item.sector,
             cells,
-            total: gt
+            total: gt,
+            isSubtotal: false
           };
         });
         const totalCells={}; let totalAll=0;
-        for(const m of months){ let s=0; for(const r of rows) s+=r.cells[m]||0; totalCells[m]=s; totalAll+=s; }
+        for(const m of months){ let s=0; for(const r of baseRows) s+=r.cells[m]||0; totalCells[m]=s; totalAll+=s; }
+        const rows = Report.buildHierarchicalRows(baseRows, months, 2, null, 1);
         return {
-          def, months, rows, total:{cells:totalCells,total:totalAll}, rowLabel:def.rowLabel, focus,
+          def, months, rows, baseRows, total:{cells:totalCells,total:totalAll}, rowLabel:def.rowLabel, focus,
           hasHierarchy: true,
           hierarchyCols: [
             { key: 'block', label: 'Block' },
@@ -999,30 +1180,41 @@ const Report = {
     }
 
     const q=(Store.tableQuery||'').toLowerCase();
-    let rows=model.rows;
-    if(q){
-      rows=rows.filter(r=>{
-        if(r.label && r.label.toLowerCase().includes(q)) return true;
-        if(r.block && r.block.toLowerCase().includes(q)) return true;
-        if(r.sector && r.sector.toLowerCase().includes(q)) return true;
-        if(r.facility && r.facility.toLowerCase().includes(q)) return true;
-        return false;
-      });
-    }
-    if(Store.sort.col){
-      const c=Store.sort.col, dir=Store.sort.dir;
-      rows=rows.slice().sort((a,b)=>{
-        let va, vb;
-        if(c==='__block'){ va = a.block || ''; vb = b.block || ''; }
-        else if(c==='__sector'){ va = a.sector || ''; vb = b.sector || ''; }
-        else if(c==='__facility' || c==='__label'){ va = a.facility || a.label || ''; vb = b.facility || b.label || ''; }
-        else if(c==='__total'){ va = a.total || 0; vb = b.total || 0; }
-        else { va = a.cells[c] || 0; vb = b.cells[c] || 0; }
-        if(typeof va==='string' && typeof vb==='string'){
-          return va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' }) * dir;
-        }
-        if(va<vb) return -1*dir; if(va>vb) return 1*dir; return 0;
-      });
+    let rows;
+    if(model.hasHierarchy && model.hierarchyCols){
+      let bRows = model.baseRows || model.rows;
+      if(q){
+        bRows = bRows.filter(r=>{
+          if(r.label && r.label.toLowerCase().includes(q)) return true;
+          if(r.block && r.block.toLowerCase().includes(q)) return true;
+          if(r.sector && r.sector.toLowerCase().includes(q)) return true;
+          if(r.facility && r.facility.toLowerCase().includes(q)) return true;
+          return false;
+        });
+      }
+      rows = Report.buildHierarchicalRows(bRows, model.months, model.hierarchyCols.length, Store.sort.col, Store.sort.dir);
+    } else {
+      rows = model.rows;
+      if(q){
+        rows = rows.filter(r=>{
+          if(r.label && r.label.toLowerCase().includes(q)) return true;
+          if(r.block && r.block.toLowerCase().includes(q)) return true;
+          if(r.sector && r.sector.toLowerCase().includes(q)) return true;
+          if(r.facility && r.facility.toLowerCase().includes(q)) return true;
+          return false;
+        });
+      }
+      if(Store.sort.col){
+        const c=Store.sort.col, dir=Store.sort.dir;
+        rows=rows.slice().sort((a,b)=>{
+          let va = (c==='__label') ? (a.label||'') : (c==='__total' ? a.total : (a.cells[c]||0));
+          let vb = (c==='__label') ? (b.label||'') : (c==='__total' ? b.total : (b.cells[c]||0));
+          if(typeof va==='string' && typeof vb==='string'){
+            return va.localeCompare(vb, undefined, { numeric: true, sensitivity: 'base' }) * dir;
+          }
+          if(va<vb) return -1*dir; if(va>vb) return 1*dir; return 0;
+        });
+      }
     }
     const total=rows.length;
     const ps=Store.pageSize; const pages=Math.max(1,Math.ceil(total/ps));
@@ -1060,20 +1252,50 @@ const Report = {
     html += `</tr></thead><tbody>`;
 
     for(const r of pageRows){
-      html += `<tr>`;
-      if(model.hasHierarchy && model.hierarchyCols && model.hierarchyCols.length === 3){
-        html += `<td class="font-medium text-slate-700" title="${Util.esc(r.block)}">${Util.esc(r.block)}</td>`;
-        html += `<td class="text-slate-600" title="${Util.esc(r.sector)}">${Util.esc(r.sector)}</td>`;
-        html += `<td class="font-semibold text-slate-900" title="${Util.esc(r.facility)}">${Util.esc(r.facility)}</td>`;
-      } else if(model.hasHierarchy && model.hierarchyCols && model.hierarchyCols.length === 2){
-        html += `<td class="font-medium text-slate-700" title="${Util.esc(r.block)}">${Util.esc(r.block)}</td>`;
-        html += `<td class="font-semibold text-slate-900" title="${Util.esc(r.sector)}">${Util.esc(r.sector)}</td>`;
+      if(r.isSubtotal && r.subtotalType === 'sector'){
+        html += `<tr class="subtotal-sector bg-blue-50/80 font-semibold text-blue-950 border-t border-b border-blue-200">`;
+        if(model.hasHierarchy && model.hierarchyCols && model.hierarchyCols.length === 3){
+          html += `<td class="text-blue-700/80 font-medium text-xs">${Util.esc(r.block)}</td>`;
+          html += `<td class="text-blue-900 font-bold text-xs">${Util.esc(r.sector)}</td>`;
+          html += `<td class="font-bold text-blue-900"><span class="inline-block w-2 h-2 rounded-full bg-blue-600 mr-1.5 align-middle"></span>${Util.esc(r.facility)}</td>`;
+        } else if(model.hasHierarchy && model.hierarchyCols && model.hierarchyCols.length === 2){
+          html += `<td class="text-blue-700/80 font-medium text-xs">${Util.esc(r.block)}</td>`;
+          html += `<td class="font-bold text-blue-900">${Util.esc(r.sector || r.label)}</td>`;
+        } else {
+          html += `<td class="sticky-col font-bold text-blue-900">${Util.esc(r.label)}</td>`;
+        }
+        for(const m of model.months) html += `<td class="num text-center font-bold text-blue-900">${Util.fmt(r.cells[m])}</td>`;
+        html += `<td class="num grand text-center font-extrabold text-blue-950 bg-blue-100/70">${Util.fmt(r.total)}</td></tr>`;
+      } else if(r.isSubtotal && r.subtotalType === 'block'){
+        html += `<tr class="subtotal-block bg-indigo-100/85 font-extrabold text-indigo-950 border-t-2 border-b-2 border-indigo-300">`;
+        if(model.hasHierarchy && model.hierarchyCols && model.hierarchyCols.length === 3){
+          html += `<td class="font-black text-indigo-950">${Util.esc(r.block)}</td>`;
+          html += `<td class="text-indigo-400 font-medium text-center">—</td>`;
+          html += `<td class="font-black text-indigo-950"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-indigo-700 mr-1.5 align-middle"></span>${Util.esc(r.facility)}</td>`;
+        } else if(model.hasHierarchy && model.hierarchyCols && model.hierarchyCols.length === 2){
+          html += `<td class="font-black text-indigo-950">${Util.esc(r.block)}</td>`;
+          html += `<td class="font-black text-indigo-950"><span class="inline-block w-2.5 h-2.5 rounded-sm bg-indigo-700 mr-1.5 align-middle"></span>${Util.esc(r.sector || r.label)}</td>`;
+        } else {
+          html += `<td class="sticky-col font-black text-indigo-950">${Util.esc(r.label)}</td>`;
+        }
+        for(const m of model.months) html += `<td class="num text-center font-black text-indigo-950">${Util.fmt(r.cells[m])}</td>`;
+        html += `<td class="num grand text-center font-black text-indigo-950 bg-indigo-200/80">${Util.fmt(r.total)}</td></tr>`;
       } else {
-        const safeLabel=Util.esc(r.label), safeCode=Util.esc(r.code||''), safeName=Util.esc(r.name||r.label), safeSection=Util.esc(r.section||'');
-        html += `<td class="sticky-col" title="${safeLabel}">${r.label}<span class="expand-ind" data-code="${safeCode}" data-name="${safeName}" data-section="${safeSection}" title="Full text dekhein">⤢</span></td>`;
+        html += `<tr>`;
+        if(model.hasHierarchy && model.hierarchyCols && model.hierarchyCols.length === 3){
+          html += `<td class="font-medium text-slate-700" title="${Util.esc(r.block)}">${Util.esc(r.block)}</td>`;
+          html += `<td class="text-slate-600" title="${Util.esc(r.sector)}">${Util.esc(r.sector)}</td>`;
+          html += `<td class="font-semibold text-slate-900" title="${Util.esc(r.facility)}">${Util.esc(r.facility)}</td>`;
+        } else if(model.hasHierarchy && model.hierarchyCols && model.hierarchyCols.length === 2){
+          html += `<td class="font-medium text-slate-700" title="${Util.esc(r.block)}">${Util.esc(r.block)}</td>`;
+          html += `<td class="font-semibold text-slate-900" title="${Util.esc(r.sector)}">${Util.esc(r.sector)}</td>`;
+        } else {
+          const safeLabel=Util.esc(r.label), safeCode=Util.esc(r.code||''), safeName=Util.esc(r.name||r.label), safeSection=Util.esc(r.section||'');
+          html += `<td class="sticky-col" title="${safeLabel}">${r.label}<span class="expand-ind" data-code="${safeCode}" data-name="${safeName}" data-section="${safeSection}" title="Full text dekhein">⤢</span></td>`;
+        }
+        for(const m of model.months) html += `<td class="num text-center">${Util.fmt(r.cells[m])}</td>`;
+        html += `<td class="num grand text-center font-bold">${Util.fmt(r.total)}</td></tr>`;
       }
-      for(const m of model.months) html += `<td class="num text-center">${Util.fmt(r.cells[m])}</td>`;
-      html += `<td class="num grand text-center font-bold">${Util.fmt(r.total)}</td></tr>`;
     }
     
     html += `</tbody><tfoot><tr>`;
@@ -1376,6 +1598,21 @@ const Exporter = {
       footStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', halign: 'center', lineColor: [203, 213, 225], lineWidth: 0.5 },
       columnStyles: colStyles,
       didParseCell: (data) => {
+        // Style subtotal rows in body
+        if (data.section === 'body') {
+          const rowObj = m.rows[data.row.index];
+          if (rowObj && rowObj.isSubtotal) {
+            if (rowObj.subtotalType === 'sector') {
+              data.cell.styles.fillColor = [240, 246, 255];
+              data.cell.styles.textColor = [30, 64, 175];
+              data.cell.styles.fontStyle = 'bold';
+            } else if (rowObj.subtotalType === 'block') {
+              data.cell.styles.fillColor = [224, 231, 255];
+              data.cell.styles.textColor = [49, 46, 129];
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
+        }
         // Center-align all numeric month columns and Grand Total column across head, body, and foot
         if (data.column.index >= numLabelCols) {
           data.cell.styles.halign = 'center';
